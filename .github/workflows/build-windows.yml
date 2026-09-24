@@ -1,0 +1,67 @@
+name: build-windows
+
+# 触发方式：本地打 tag 并 push，Action 自动跑、在 Releases 创建对应版本并附 zip
+# 用法：
+#   git tag v1.0.0
+#   git push origin v1.0.0
+# 然后打开仓库的 Releases 页面，下载 DouyinCommentMiner-v1.0.0.zip
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write   # 创建 Release 需要写权限
+
+jobs:
+  build:
+    runs-on: windows-latest
+
+    steps:
+      - name: 拉取代码
+        uses: actions/checkout@v4
+
+      - name: 准备 Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖（阿里云镜像，国内 CI 友好）
+        run: |
+          python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
+          python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ ^
+            playwright openpyxl customtkinter pyinstaller
+
+      - name: 打包（PyInstaller · onedir · windowed）
+        run: |
+          python -m PyInstaller --noconfirm --clean ^
+            --name DouyinCommentMiner ^
+            --windowed ^
+            --onedir ^
+            --collect-all playwright ^
+            --collect-all openpyxl ^
+            --collect-all customtkinter ^
+            --hidden-import openpyxl ^
+            douyin_miner_gui.py
+
+      # 如果目标电脑**既没有 Chrome 也没有 Edge**（极少数纯裸机 Win10/11），
+      # 想让 exe 自带浏览器内核，把下一行取消注释即可（产物会多 ~150MB）。
+      # - name: 下载 Chromium 内核（可选，给纯裸机用）
+      #   run: python -m playwright install chromium
+
+      - name: 把 dist 目录打成 zip
+        shell: pwsh
+        run: |
+          $zipName = "DouyinCommentMiner-${{ github.ref_name }}.zip"
+          if (Test-Path $zipName) { Remove-Item $zipName }
+          Compress-Archive -Path dist/DouyinCommentMiner -DestinationPath $zipName
+          Write-Host "生成产物：$zipName"
+          Get-Item $zipName | Format-List Name, Length
+
+      - name: 创建 GitHub Release 并上传 zip
+        uses: softprops/action-gh-release@v2
+        with:
+          files: DouyinCommentMiner-${{ github.ref_name }}.zip
+          generate_release_notes: true
+          fail_on_unmatched_files: true
