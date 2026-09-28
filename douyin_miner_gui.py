@@ -20,6 +20,7 @@ from datetime import datetime, timedelta
 import customtkinter as ctk
 
 import douyin_miner as eng
+from client.license import License
 
 
 APP_TITLE = "抖音评论关键词名单挖掘"
@@ -77,6 +78,9 @@ class App(ctk.CTk):
         self.minsize(1000, 640)
         self.configure(fg_color=BG)
 
+        # 授权客户端
+        self.license = License()
+
         self.q = queue.Queue()
         self.busy = False
         self.logged_in = False
@@ -85,9 +89,121 @@ class App(ctk.CTk):
         self.outdir = ctk.StringVar(value=DEFAULT_OUTDIR)
         self._rowcount = 0
 
-        self._build()
+        # 启动：先校验已存的 token，再决定显示登录页还是主界面
+        self._boot()
         self.after(100, self.poll)
-        threading.Thread(target=self._check_login_startup, daemon=True).start()
+
+    # ================= 启动 / 授权 =================
+    def _boot(self):
+        if self.license.token:
+            ok, msg = self.license.verify()
+            if ok:
+                self._build()
+                self.after(100, self._heartbeat_loop)
+                return
+            self._show_login(msg or "登录已失效，请重新登录")
+        else:
+            self._show_login()
+
+    def _show_login(self, error_msg: str = ""):
+        """登录界面 —— 占满整个窗口，登录成功后再 build 主界面。"""
+        # 清空窗口
+        for w in self.winfo_children():
+            w.destroy()
+
+        self.geometry("480x560")
+        self.minsize(420, 520)
+
+        wrap = ctk.CTkFrame(self, fg_color=BG)
+        wrap.pack(fill="both", expand=True, padx=40, pady=40)
+
+        ctk.CTkLabel(wrap, text="🐙", font=ctk.CTkFont(size=42)).pack(pady=(20, 4))
+        ctk.CTkLabel(wrap, text=APP_TITLE, text_color="#1f2328",
+                     font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(0, 4))
+        ctk.CTkLabel(wrap, text=f"授权服务器：{self.license.server_url}",
+                     text_color=SUB, font=ctk.CTkFont(size=11)).pack(pady=(0, 24))
+
+        card = ctk.CTkFrame(wrap, fg_color=CARD, corner_radius=12,
+                            border_width=1, border_color=LINE)
+        card.pack(fill="x")
+
+        ctk.CTkLabel(card, text="账号", text_color=SUB,
+                     font=ctk.CTkFont(size=12), anchor="w").pack(fill="x", padx=18, pady=(18, 2))
+        self.e_user = ctk.CTkEntry(card, height=38, corner_radius=8, border_color=LINE,
+                                   placeholder_text="请输入账号")
+        self.e_user.pack(fill="x", padx=18)
+
+        ctk.CTkLabel(card, text="密码", text_color=SUB,
+                     font=ctk.CTkFont(size=12), anchor="w").pack(fill="x", padx=18, pady=(14, 2))
+        self.e_pw = ctk.CTkEntry(card, height=38, corner_radius=8, border_color=LINE,
+                                 placeholder_text="请输入密码", show="*")
+        self.e_pw.pack(fill="x", padx=18)
+        self.e_pw.bind("<Return>", lambda e: self._do_login())
+
+        self.l_msg = ctk.CTkLabel(card, text=error_msg, text_color="#dc2626",
+                                  font=ctk.CTkFont(size=12), anchor="w", wraplength=360)
+        self.l_msg.pack(fill="x", padx=18, pady=(10, 0))
+
+        self.b_login = ctk.CTkButton(card, text="登 录", height=42, corner_radius=8,
+                                     fg_color="#4b6bff", hover_color="#6a86ff",
+                                     text_color="#fff", font=ctk.CTkFont(size=14, weight="bold"),
+                                     command=self._do_login)
+        self.b_login.pack(fill="x", padx=18, pady=(18, 18))
+
+        ctk.CTkLabel(wrap, text="没有账号？请联系销售开通。",
+                     text_color=SUB, font=ctk.CTkFont(size=11)).pack(pady=(18, 0))
+        ctk.CTkLabel(wrap, text="v1.0 · 合智云数",
+                     text_color="#9aa3b1", font=ctk.CTkFont(size=10)).pack(side="bottom", pady=8)
+
+        self.e_user.focus_set()
+
+    def _do_login(self):
+        u = self.e_user.get().strip()
+        p = self.e_pw.get()
+        if not u or not p:
+            self.l_msg.configure(text="请输入账号和密码")
+            return
+        self.b_login.configure(state="disabled", text="登录中…")
+        self.update()
+
+        # 登录放后台线程，避免阻塞 UI
+        def _worker():
+            ok, msg = self.license.login(u, p)
+            self.after(0, lambda: self._on_login_result(ok, msg))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_login_result(self, ok: bool, msg: str):
+        if not ok:
+            self.l_msg.configure(text=msg)
+            self.b_login.configure(state="normal", text="登 录")
+            self.e_pw.delete(0, "end")
+            return
+        # 登录成功：重建主界面
+        self._build()
+        self.after(100, self._heartbeat_loop)
+
+    def _heartbeat_loop(self):
+        """每 30 分钟调一次 /verify，账号被改期/停用时立刻锁界面。"""
+        def _beat():
+            ok, msg = self.license.verify()
+            if not ok and self.busy is False:
+                # 没在抓取时直接踢回登录页
+                self.after(0, lambda: self._kick_to_login(msg))
+        threading.Thread(target=_beat, daemon=True).start()
+        self.after(30 * 60 * 1000, self._heartbeat_loop)
+
+    def _kick_to_login(self, msg: str):
+        try:
+            self.stop_event.set()
+        except Exception:
+            pass
+        _msg("warn", "账号已失效", f"{msg}\n请重新登录。")
+        self._show_login(msg)
+
+    def _do_logout(self):
+        self.license.logout()
+        self._show_login()
 
     # ================= 布局 =================
     def _build(self):
@@ -95,6 +211,20 @@ class App(ctk.CTk):
         bar.pack(fill="x"); bar.pack_propagate(False)
         ctk.CTkLabel(bar, text="🐙  " + APP_TITLE, text_color="#333",
                      font=ctk.CTkFont(size=12)).pack(side="left", padx=12)
+
+        # 右侧：账号 + 到期 + 退出
+        days = self.license.days_left()
+        exp = self.license.expiry_date()
+        if days is not None and days < 7:
+            exp_color = "#dc2626"
+        else:
+            exp_color = "#08612f"
+        acct_text = f"👤 {self.license.username}   |   📅 到期 {exp}"
+        ctk.CTkLabel(bar, text=acct_text, text_color=exp_color,
+                     font=ctk.CTkFont(size=11)).pack(side="right", padx=8)
+        ctk.CTkButton(bar, text="退出登录", width=68, height=22, corner_radius=4,
+                      fg_color="#cfd6dd", hover_color="#b8c0c8", text_color="#1f2328",
+                      font=ctk.CTkFont(size=11), command=self._do_logout).pack(side="right", padx=6)
 
         root = ctk.CTkFrame(self, fg_color=BG)
         root.pack(fill="both", expand=True)
