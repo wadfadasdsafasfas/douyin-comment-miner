@@ -72,6 +72,7 @@ jobs:
 
       - name: 上传 zip 到服务器（给客户下载升级用）
         if: ${{ env.SERVER_URL != '' && env.ADMIN_PASSWORD != '' }}
+        shell: bash
         env:
           SERVER_URL: ${{ secrets.SERVER_URL }}
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
@@ -151,6 +152,7 @@ jobs:
 
       - name: 上传 zip 到服务器（给客户下载升级用）
         if: ${{ env.SERVER_URL != '' && env.ADMIN_PASSWORD != '' }}
+        shell: bash
         env:
           SERVER_URL: ${{ secrets.SERVER_URL }}
           ADMIN_USER: ${{ secrets.ADMIN_USER }}
