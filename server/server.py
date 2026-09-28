@@ -42,6 +42,9 @@ class LoginIn(BaseModel):
     username: str
     password: str
     client_version: str = "0.0.0"   # 客户端版本号（强制升级检查）
+    device_id: str = ""             # 客户端生成的 UUID
+    device_name: str = ""           # 显示用
+    kick_existing: bool = False     # 是否挤掉旧设备
 
 
 class CreateUserIn(BaseModel):
@@ -124,14 +127,30 @@ def login(body: LoginIn):
             # 强制升级：直接 426 拒绝
             raise HTTPException(426, msg)
         # 仅提示：把警告塞进响应里，客户端顶栏显示
-        info, dbmsg = auth_db.login(body.username, body.password)
+        info, dbmsg, existing = auth_db.login(
+            body.username, body.password, body.device_id, body.device_name,
+            kick_existing=body.kick_existing)
+        if msg == "ALREADY_LOGGED_IN" and existing is not None:
+            raise HTTPException(409, detail={
+                "code": "ALREADY_LOGGED_IN",
+                "message": f"账号已在另一台设备登录（{existing}）",
+                "existing_device": existing,
+            })
         if not info:
             raise HTTPException(401, dbmsg)
         return {"valid": True, "token": info["token"],
                 "expires_at": info["user_expires_at"],
                 "username": info["username"], "message": "ok",
                 "warn": msg, "min_version": min_ver}
-    info, msg = auth_db.login(body.username, body.password)
+    info, msg, existing = auth_db.login(
+        body.username, body.password, body.device_id, body.device_name,
+        kick_existing=body.kick_existing)
+    if msg == "ALREADY_LOGGED_IN" and existing is not None:
+        raise HTTPException(409, detail={
+            "code": "ALREADY_LOGGED_IN",
+            "message": f"账号已在另一台设备登录（{existing}）",
+            "existing_device": existing,
+        })
     if not info:
         raise HTTPException(401, msg)
     return {"valid": True, "token": info["token"],
@@ -140,10 +159,22 @@ def login(body: LoginIn):
 
 
 @app.get("/api/verify")
-def verify(token: str):
-    info, msg = auth_db.verify(token)
+def verify(token: str, device_id: str = ""):
+    info, msg, code = auth_db.verify(token, device_id)
     if not info:
-        raise HTTPException(403, msg)
+        # DEVICE_KICKED 是预期内的"被踢"，前端要区分对待
+        detail = {"code": code, "message": msg}
+        raise HTTPException(403, detail=detail)
+    return info
+
+
+@app.post("/api/trial")
+def trial(request: Request):
+    """自助申请 3 小时试用账号，每 IP 每天 1 次。"""
+    ip = request.client.host or "unknown"
+    info, msg = auth_db.create_trial_user(ip)
+    if not info:
+        raise HTTPException(429, msg)
     return info
 
 
@@ -157,12 +188,17 @@ def logout(x_token: str = Header(default=None, alias="X-Token")):
 # ---------- 管理员登录 ----------
 @app.post("/api/admin/login")
 def admin_login(body: LoginIn):
-    """管理员登录拿到 admin_token（独立于客户端 token）。"""
-    info, msg = auth_db.login(body.username, body.password)
-    if not info:
-        raise HTTPException(401, msg)
-    if info["username"] != "admin":
+    """管理员登录拿到 admin_token（独立于客户端 token，不计入单设备限制）。"""
+    # admin 不走设备绑定：直接验证密码 + 是否 admin
+    user = auth_db.get_user(body.username)
+    if not user:
+        raise HTTPException(401, "用户名或密码错误")
+    if not auth_db.verify_password(body.password, auth_db.get_user_password_hash(body.username)):
+        raise HTTPException(401, "用户名或密码错误")
+    if user["username"] != "admin":
         raise HTTPException(403, "不是管理员账号")
+    if user["status"] != "active":
+        raise HTTPException(403, "账号已停用")
     admin_token = secrets.token_urlsafe(32)
     ADMIN_TOKENS.add(admin_token)
     return {"admin_token": admin_token}

@@ -106,12 +106,15 @@ class App(ctk.CTk):
         self.after(300, self._check_update_startup)
 
         if self.license.token:
-            ok, msg = self.license.verify()
+            ok, msg, state = self.license.verify()
             if ok:
                 self._build()
                 self.after(100, self._heartbeat_loop)
                 return
-            self._show_login(msg or "登录已失效，请重新登录")
+            extra = ""
+            if state == "kicked":
+                extra = "\n（另一台设备登录了你的账号）"
+            self._show_login(f"{msg}{extra}" or "登录已失效，请重新登录")
         else:
             self._show_login()
 
@@ -160,14 +163,49 @@ class App(ctk.CTk):
                                      command=self._do_login)
         self.b_login.pack(fill="x", padx=18, pady=(18, 18))
 
-        ctk.CTkLabel(wrap, text="没有账号？请联系销售开通。",
-                     text_color=SUB, font=ctk.CTkFont(size=11)).pack(pady=(18, 0))
+        ctk.CTkLabel(wrap, text="没有账号？",
+                     text_color=SUB, font=ctk.CTkFont(size=11)).pack(side="top", pady=(18, 0))
+        trial_row = ctk.CTkFrame(wrap, fg_color="transparent")
+        trial_row.pack(side="top")
+        self.b_trial = ctk.CTkButton(
+            trial_row, text="申请 3 小时试用",
+            fg_color="transparent", text_color=LINK,
+            hover_color="#e6e9ee", font=ctk.CTkFont(size=11, underline=True),
+            height=22, width=130, corner_radius=4,
+            command=self._on_trial_click,
+        )
+        self.b_trial.pack(side="left")
         ctk.CTkLabel(wrap, text="v1.0 · 合智云数",
                      text_color="#9aa3b1", font=ctk.CTkFont(size=10)).pack(side="bottom", pady=8)
 
         self.e_user.focus_set()
 
-    def _do_login(self):
+    def _on_trial_click(self):
+        self.b_trial.configure(state="disabled", text="申请中…")
+
+        def _worker():
+            info, err = self.license.request_trial()
+            self.after(0, lambda: self._on_trial_result(info, err))
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _on_trial_result(self, info, err: str):
+        self.b_trial.configure(state="normal", text="申请 3 小时试用")
+        if not info:
+            _msg("warn", "申请失败", err)
+            return
+        u = info.get("username", "")
+        p = info.get("password", "")
+        exp = (info.get("expires_at") or "")[:16].replace("T", " ")
+        self.e_user.delete(0, "end"); self.e_user.insert(0, u)
+        self.e_pw.delete(0, "end"); self.e_pw.insert(0, p)
+        self.l_msg.configure(
+            text=f"✅ 已生成试用账号（到期 {exp}），点登录即可",
+            text_color="#0a7d3c",
+        )
+        self.e_pw.focus_set()
+
+    def _do_login(self, kick_existing: bool = False):
         u = self.e_user.get().strip()
         p = self.e_pw.get()
         if not u or not p:
@@ -178,10 +216,50 @@ class App(ctk.CTk):
 
         # 登录放后台线程，避免阻塞 UI
         def _worker():
-            ok, msg = self.license.login(u, p)
+            ok, msg, existing = self.license.login(u, p, kick_existing=kick_existing)
+            if msg == "DEVICE_CONFLICT":
+                self.after(0, lambda: self._show_conflict_dialog(existing or "未知设备", u, p))
+                return
             self.after(0, lambda: self._on_login_result(ok, msg))
 
         threading.Thread(target=_worker, daemon=True).start()
+
+    def _show_conflict_dialog(self, existing_device: str, username: str, password: str):
+        """设备冲突弹窗：挤下线重试 / 取消。"""
+        # 先恢复登录按钮
+        self.b_login.configure(state="normal", text="登 录")
+        try:
+            self.l_msg.configure(text="")
+        except Exception:
+            pass
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("账号已在另一台设备登录")
+        dlg.geometry("420x230")
+        dlg.transient(self); dlg.grab_set()
+        wrap = ctk.CTkFrame(dlg, fg_color=BG)
+        wrap.pack(fill="both", expand=True, padx=24, pady=20)
+        ctk.CTkLabel(wrap, text="⚠️ 账号已在另一台设备登录",
+                     font=ctk.CTkFont(size=15, weight="bold")).pack(pady=(4, 8))
+        ctk.CTkLabel(wrap, text=f"当前登录设备：\n{existing_device}",
+                     text_color=SUB, font=ctk.CTkFont(size=12),
+                     justify="center").pack(pady=(0, 8))
+        ctk.CTkLabel(wrap, text="如要继续，请选择「挤下线」；\n原设备若在抓取会被暂停。",
+                     text_color=SUB, font=ctk.CTkFont(size=11),
+                     justify="center").pack(pady=(0, 16))
+        bar = ctk.CTkFrame(wrap, fg_color="transparent")
+        bar.pack(fill="x")
+        ctk.CTkButton(
+            bar, text="挤下线重试", height=38,
+            fg_color="#dc2626", hover_color="#b91c1c",
+            font=ctk.CTkFont(size=13, weight="bold"),
+            command=lambda: (dlg.destroy(), self._do_login(kick_existing=True)),
+        ).pack(side="left", expand=True, padx=(0, 6))
+        ctk.CTkButton(
+            bar, text="取消", height=38,
+            fg_color=GRAY_BTN, hover_color="#dde1e6",
+            text_color=INK, font=ctk.CTkFont(size=13),
+            command=dlg.destroy,
+        ).pack(side="left", expand=True, padx=(6, 0))
 
     def _on_login_result(self, ok: bool, msg: str):
         if not ok:
@@ -194,14 +272,28 @@ class App(ctk.CTk):
         self.after(100, self._heartbeat_loop)
 
     def _heartbeat_loop(self):
-        """每 30 分钟调一次 /verify，账号被改期/停用时立刻锁界面。"""
+        """每 30 分钟调一次 /verify，账号被改期/停用/被踢时立刻锁界面。"""
         def _beat():
-            ok, msg = self.license.verify()
-            if not ok and self.busy is False:
-                # 没在抓取时直接踢回登录页
-                self.after(0, lambda: self._kick_to_login(msg))
+            ok, msg, state = self.license.verify()
+            if not ok:
+                self.after(0, lambda: self._handle_session_lost(msg, state))
         threading.Thread(target=_beat, daemon=True).start()
         self.after(30 * 60 * 1000, self._heartbeat_loop)
+
+    def _handle_session_lost(self, msg: str, state: str):
+        """心跳失败统一处理：被踢 / 过期 / 停用。
+        busy=True 时也会强制回登录页（抓取由 stop_event 暂停，结果已落盘）。"""
+        try:
+            self.stop_event.set()
+        except Exception:
+            pass
+        extra = ""
+        if state == "kicked":
+            extra = "\n（另一台设备登录了你的账号）"
+        if self.busy:
+            extra += "\n当前抓取已暂停，结果已保存到文件。"
+        _msg("warn", "账号已失效", f"{msg}{extra}\n请重新登录。")
+        self._show_login(f"{msg}{extra}")
 
     # ================= 自动升级 =================
     def _check_update_startup(self):
@@ -397,14 +489,6 @@ class App(ctk.CTk):
 
         # 短暂延迟让 updater 拿到主进程 pid，然后自杀
         self.after(500, self.destroy)
-
-    def _kick_to_login(self, msg: str):
-        try:
-            self.stop_event.set()
-        except Exception:
-            pass
-        _msg("warn", "账号已失效", f"{msg}\n请重新登录。")
-        self._show_login(msg)
 
     def _do_logout(self):
         self.license.logout()
