@@ -58,6 +58,10 @@ def init_db():
                 created_at TEXT NOT NULL
             );
             CREATE INDEX IF NOT EXISTS idx_tokens_user ON tokens(username);
+            CREATE TABLE IF NOT EXISTS app_config (
+                key TEXT PRIMARY KEY,
+                value TEXT NOT NULL
+            );
         """)
 
 
@@ -165,6 +169,50 @@ def delete_user(username: str) -> tuple[bool, str]:
         c.execute("DELETE FROM users WHERE username=?", (username,))
         c.execute("DELETE FROM tokens WHERE username=?", (username,))
     return True, "ok"
+
+
+# ---------- app_config（版本配置 / 升级开关） ----------
+def get_config(key: str, default: str | None = None) -> str | None:
+    with conn() as c:
+        r = c.execute("SELECT value FROM app_config WHERE key=?", (key,)).fetchone()
+    return r["value"] if r else default
+
+
+def set_config(key: str, value: str):
+    with conn() as c:
+        c.execute(
+            "INSERT INTO app_config(key,value) VALUES(?,?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            (key, value),
+        )
+
+
+def get_all_config() -> dict:
+    """返回所有 config；首次启动会 seed 默认值。"""
+    with conn() as c:
+        rows = c.execute("SELECT key, value FROM app_config").fetchall()
+    cfg = {r["key"]: r["value"] for r in rows}
+    # 首次启动 seed
+    defaults = {
+        "latest_version": "1.2.1",
+        "min_version":   "1.2.0",
+        "force_update":  "false",       # "true" / "false"
+        "windows_url":   "",
+        "macos_url":     "",
+        "release_notes": "",
+    }
+    changed = False
+    for k, v in defaults.items():
+        if k not in cfg:
+            cfg[k] = v
+            c2 = sqlite3.connect(DB_PATH)
+            try:
+                c2.execute("INSERT INTO app_config(key,value) VALUES(?,?)", (k, v))
+                c2.commit()
+            finally:
+                c2.close()
+            changed = True
+    return cfg
 
 
 # ---------- 登录 / Token ----------
