@@ -21,7 +21,7 @@ if errorlevel 1 (
 
 echo [1/3] 安装依赖 playwright / openpyxl / customtkinter / pyinstaller（用阿里云镜像）...
 python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
-python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ playwright openpyxl customtkinter pyinstaller
+python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ playwright openpyxl customtkinter pyinstaller requests
 if errorlevel 1 (
   echo [!] 依赖安装失败，多半是网络问题，稍后重试。
   pause
@@ -34,10 +34,15 @@ python -m PyInstaller --noconfirm --clean ^
   --name DouyinCommentMiner ^
   --windowed ^
   --onedir ^
+  --paths . ^
   --collect-all playwright ^
   --collect-all openpyxl ^
   --collect-all customtkinter ^
+  --collect-all requests ^
   --hidden-import openpyxl ^
+  --hidden-import requests ^
+  --hidden-import license ^
+  --hidden-import server_url ^
   douyin_miner_gui.py
 if errorlevel 1 (
   echo [!] 打包失败，把上面的报错发给我。

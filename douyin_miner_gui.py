@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 import customtkinter as ctk
 
 import douyin_miner as eng
-from client.license import License
+from license import License
 
 
 APP_TITLE = "抖音评论关键词名单挖掘"

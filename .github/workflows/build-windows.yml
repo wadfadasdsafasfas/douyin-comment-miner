@@ -40,10 +40,15 @@ jobs:
             --name DouyinCommentMiner `
             --windowed `
             --onedir `
+            --paths . `
             --collect-all playwright `
             --collect-all openpyxl `
             --collect-all customtkinter `
+            --collect-all requests `
             --hidden-import openpyxl `
+            --hidden-import requests `
+            --hidden-import license `
+            --hidden-import server_url `
             douyin_miner_gui.py
 
       # 如果目标电脑**既没有 Chrome 也没有 Edge**（极少数纯裸机 Win10/11），

@@ -17,11 +17,11 @@ from pathlib import Path
 import requests
 
 try:
-    from client.config import SERVER_URL as _CONFIG_SERVER
+    from server_url import SERVER_URL as _CONFIG_SERVER
 except Exception:
     _CONFIG_SERVER = None
 
-# 服务端地址 —— 打包前改 client/config.py 中的 SERVER_URL；也可通过环境变量覆盖
+# 服务端地址 —— 打包前改 server_url.py 中的 SERVER_URL；也可通过环境变量覆盖
 SERVER_URL = (
     os.environ.get("DOUYIN_MINER_SERVER")
     or _CONFIG_SERVER
