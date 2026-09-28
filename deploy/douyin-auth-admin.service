@@ -1,0 +1,17 @@
+[Unit]
+Description=DouyinCommentMiner Admin Panel (Streamlit)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/app/admin
+Environment=BACKEND_URL=http://127.0.0.1:8000
+ExecStart=/opt/app/admin/.venv/bin/python -m streamlit run /opt/app/admin/admin.py --server.address 127.0.0.1 --server.port 8501 --server.headless true --server.baseUrlPath /admin
+Restart=always
+RestartSec=3
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
