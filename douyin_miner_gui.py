@@ -15,9 +15,12 @@ import queue
 import subprocess
 import sys
 import threading
+import time
 from datetime import datetime, timedelta
+from pathlib import Path
 
 import customtkinter as ctk
+import requests
 
 import douyin_miner as eng
 from license import License
@@ -88,6 +91,10 @@ class App(ctk.CTk):
         self.stop_event = threading.Event()
         self.outdir = ctk.StringVar(value=DEFAULT_OUTDIR)
         self._rowcount = 0
+        # 自动升级相关状态
+        self.update_info: dict | None = None      # /api/latest 返回的完整 dict
+        self.update_dismissed: bool = False      # 用户在登录页点了"稍后"
+        self._update_dialog: ctk.CTkToplevel | None = None
 
         # 启动：先校验已存的 token，再决定显示登录页还是主界面
         self._boot()
@@ -95,6 +102,9 @@ class App(ctk.CTk):
 
     # ================= 启动 / 授权 =================
     def _boot(self):
+        # 启动后先在后台检测升级，避免阻塞 UI
+        self.after(300, self._check_update_startup)
+
         if self.license.token:
             ok, msg = self.license.verify()
             if ok:
@@ -193,6 +203,201 @@ class App(ctk.CTk):
         threading.Thread(target=_beat, daemon=True).start()
         self.after(30 * 60 * 1000, self._heartbeat_loop)
 
+    # ================= 自动升级 =================
+    def _check_update_startup(self):
+        """启动后调用一次。强制升级场景下要禁用登录按钮。"""
+        def _worker():
+            info, has, reason = self.license.check_update()
+            if info is None:
+                return
+            self.after(0, lambda: self._apply_update_info(info, has, reason))
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _apply_update_info(self, info: dict, has_update: bool, reason: str):
+        self.update_info = info
+        # 强制升级检查：min_version 逻辑已在 server 端处理；
+        # 这里额外看一下：如果当前页是登录页，登录按钮没禁用就把状态传给 GUI
+        # 实际禁用与否由 /api/login 返回的 426 + 客户端 catch 处理。
+
+        if has_update and not self.update_dismissed:
+            # 启动时立刻弹窗（升级时机）
+            self._show_update_dialog()
+
+    def _show_update_dialog(self):
+        if self._update_dialog is not None and self._update_dialog.winfo_exists():
+            return
+        info = self.update_info or {}
+        latest = info.get("version", "?")
+        force = info.get("force_update", False)
+        notes = info.get("release_notes", "")
+
+        dlg = ctk.CTkToplevel(self)
+        dlg.title("有新版本")
+        dlg.geometry("480x340")
+        dlg.transient(self)
+        dlg.grab_set()
+        self._update_dialog = dlg
+
+        wrap = ctk.CTkFrame(dlg, fg_color=BG)
+        wrap.pack(fill="both", expand=True, padx=24, pady=24)
+
+        ctk.CTkLabel(wrap, text="🔔 发现新版本",
+                     font=ctk.CTkFont(size=18, weight="bold")).pack(pady=(4, 8))
+        ctk.CTkLabel(wrap, text=f"当前版本：{self.license.client_version()}    最新版本：{latest}",
+                     text_color=SUB).pack(pady=(0, 12))
+
+        if force:
+            ctk.CTkLabel(wrap, text="⚠️ 此版本为强制升级，必须更新才能继续使用。",
+                         text_color="#dc2626").pack(pady=(0, 12))
+        else:
+            ctk.CTkLabel(wrap, text="建议升级以获得新功能 / 问题修复。",
+                         text_color=SUB).pack(pady=(0, 12))
+
+        if notes:
+            notes_box = ctk.CTkTextbox(wrap, height=80, fg_color=CARD,
+                                        border_width=1, border_color=LINE)
+            notes_box.pack(fill="x", pady=(0, 12))
+            notes_box.insert("1.0", notes)
+            notes_box.configure(state="disabled")
+
+        ctk.CTkLabel(wrap, text="更新过程会自动关闭当前程序并重新启动。",
+                     text_color=SUB, font=ctk.CTkFont(size=11)).pack(pady=(4, 8))
+
+        bar = ctk.CTkFrame(wrap, fg_color="transparent")
+        bar.pack(fill="x", pady=(8, 0))
+
+        def do_update():
+            dlg.destroy()
+            self._do_download_and_apply()
+
+        def do_later():
+            self.update_dismissed = True
+            dlg.destroy()
+
+        ctk.CTkButton(bar, text="立即更新", height=40, command=do_update,
+                     fg_color="#4b6bff", hover_color="#6a86ff").pack(side="left", expand=True, padx=(0, 6))
+        if not force:
+            ctk.CTkButton(bar, text="稍后", height=40, command=do_later,
+                         fg_color=GRAY_BTN, hover_color="#dde1e6",
+                         text_color=INK).pack(side="left", expand=True, padx=(6, 0))
+
+    def _do_download_and_apply(self):
+        info = self.update_info or {}
+        sysname = sys.platform
+        if sysname.startswith("win"):
+            url = (info.get("downloads") or {}).get("windows", "")
+            relpath = "DouyinCommentMiner.exe"
+        elif sysname == "darwin":
+            url = (info.get("downloads") or {}).get("macos", "")
+            relpath = "DouyinCommentMiner.app"
+        else:
+            url = ""
+            relpath = "DouyinCommentMiner"
+
+        if not url:
+            _msg("error", "升级失败", "服务端未提供本平台的下载链接。")
+            return
+
+        # 进度窗口
+        prog = ctk.CTkToplevel(self)
+        prog.title("正在下载更新")
+        prog.geometry("460x160")
+        prog.transient(self)
+        prog.grab_set()
+        ctk.CTkLabel(prog, text="正在下载新版本...", font=ctk.CTkFont(size=14, weight="bold")).pack(pady=(20, 8))
+        prog_lbl = ctk.CTkLabel(prog, text="准备中...", text_color=SUB)
+        prog_lbl.pack(pady=(0, 8))
+        prog_bar = ctk.CTkProgressBar(prog, width=400)
+        prog_bar.set(0)
+        prog_bar.pack(pady=(0, 16))
+
+        def _worker():
+            try:
+                # 选下载目的地：当前 exe 所在目录的 _update 子目录
+                if getattr(sys, "frozen", False):
+                    # PyInstaller --onedir 模式
+                    exe_dir = Path(sys.executable).parent
+                else:
+                    exe_dir = Path(__file__).parent.resolve()
+                update_dir = exe_dir / "_update"
+                update_dir.mkdir(parents=True, exist_ok=True)
+                zip_path = update_dir / "update.zip"
+
+                ok = self._download_with_progress(url, zip_path, lambda done, total: self.after(0, lambda: _update_bar(done, total)))
+                if not ok:
+                    self.after(0, lambda: _fail("下载失败"))
+                    return
+                # 启 updater 子进程
+                self.after(0, lambda: _spawn_updater(zip_path, update_dir, relpath))
+            except Exception as e:
+                self.after(0, lambda: _fail(str(e)))
+
+        def _update_bar(done, total):
+            if total > 0:
+                prog_bar.set(done / total)
+                mb_d = done / 1024 / 1024
+                mb_t = total / 1024 / 1024
+                prog_lbl.configure(text=f"{mb_d:.1f} / {mb_t:.1f} MB")
+
+        def _spawn_updater(zip_path, update_dir, relpath):
+            prog_lbl.configure(text="下载完成，准备重启...")
+            prog_bar.set(1.0)
+            self.update()
+            time.sleep(0.3)
+            self._launch_updater(zip_path, update_dir, relpath)
+
+        def _fail(reason: str):
+            prog.destroy()
+            _msg("error", "升级失败", reason)
+
+        threading.Thread(target=_worker, daemon=True).start()
+
+    def _download_with_progress(self, url: str, dest: Path, cb) -> bool:
+        try:
+            with requests.get(url, stream=True, timeout=30) as r:
+                r.raise_for_status()
+                total = int(r.headers.get("Content-Length", 0))
+                done = 0
+                with open(dest, "wb") as f:
+                    for chunk in r.iter_content(chunk_size=64 * 1024):
+                        if chunk:
+                            f.write(chunk)
+                            done += len(chunk)
+                            cb(done, total)
+            return True
+        except Exception:
+            return False
+
+    def _launch_updater(self, zip_path: Path, update_dir: Path, relpath: str):
+        """启动 updater 子进程，然后退出主程序。
+        relpath 是 update_dir 父目录下要启动的可执行路径。"""
+        import updater as _upd
+        # 找到 updater 自身（PyInstaller 打包时就在同 _internal 目录）
+        updater_path = Path(_upd.__file__).resolve()
+        wait_pid = os.getpid()
+
+        if sys.platform.startswith("win"):
+            # Windows: 子进程要落地成 .exe，所以用 python 调用 updater.py
+            # 实际打包时会单独打 updater.exe 走 subprocess 直启
+            cmd = [sys.executable, str(updater_path), "apply",
+                   str(update_dir), str(zip_path), relpath,
+                   "--wait-pid", str(wait_pid)]
+            subprocess.Popen(cmd, creationflags=0x00000008)
+        elif sys.platform == "darwin":
+            # Mac: 同样的逻辑；如果是 frozen .app，则 updater 在 _internal 里
+            cmd = [sys.executable, str(updater_path), "apply",
+                   str(update_dir), str(zip_path), relpath,
+                   "--wait-pid", str(wait_pid)]
+            subprocess.Popen(cmd)
+        else:
+            cmd = [sys.executable, str(updater_path), "apply",
+                   str(update_dir), str(zip_path), relpath,
+                   "--wait-pid", str(wait_pid)]
+            subprocess.Popen(cmd)
+
+        # 短暂延迟让 updater 拿到主进程 pid，然后自杀
+        self.after(500, self.destroy)
+
     def _kick_to_login(self, msg: str):
         try:
             self.stop_event.set()
@@ -207,6 +412,13 @@ class App(ctk.CTk):
 
     # ================= 布局 =================
     def _build(self):
+        # 清空窗口（登录界面 → 主界面切换时登录页 widget 必须先销毁，
+        # 否则新主界面会 pack 叠加在登录页上，看起来还是登录页——但 token 已落盘）。
+        for w in self.winfo_children():
+            w.destroy()
+        self.geometry("1180x760")
+        self.minsize(1000, 640)
+
         bar = ctk.CTkFrame(self, fg_color="#e6e9ee", corner_radius=0, height=30)
         bar.pack(fill="x"); bar.pack_propagate(False)
         ctk.CTkLabel(bar, text="🐙  " + APP_TITLE, text_color="#333",

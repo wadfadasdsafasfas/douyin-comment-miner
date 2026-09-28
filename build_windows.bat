@@ -43,6 +43,7 @@ python -m PyInstaller --noconfirm --clean ^
   --hidden-import requests ^
   --hidden-import license ^
   --hidden-import server_url ^
+  --hidden-import updater ^
   douyin_miner_gui.py
 if errorlevel 1 (
   echo [!] 打包失败，把上面的报错发给我。

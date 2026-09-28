@@ -73,6 +73,49 @@ def main_page():
             st.session_state.admin_token = None
             st.rerun()
 
+    # ===== 版本配置 / 自动升级 =====
+    with st.expander("📌 版本配置 & 自动升级", expanded=False):
+        cfg_r = api("GET", "/api/admin/config", admin_token=admin_token)
+        cfg = cfg_r.json() if cfg_r.status_code == 200 else {}
+        with st.form("version_config"):
+            cc1, cc2 = st.columns(2)
+            with cc1:
+                latest = st.text_input("最新版本号",
+                                       value=cfg.get("latest_version", "1.0.0"),
+                                       help="客户端启动时检测到这个版本就提示升级")
+                minv = st.text_input("最低允许版本",
+                                     value=cfg.get("min_version", "0.0.0"),
+                                     help="低于这个版本登录会被拒绝（强制升级）")
+                force = st.checkbox("强制升级",
+                                    value=cfg.get("force_update", "false") == "true",
+                                    help="勾选后，低于最低版本的客户端无法登录")
+            with cc2:
+                win_url = st.text_input("Windows zip URL",
+                                        value=cfg.get("windows_url", ""),
+                                        help="通常由 GitHub Actions 自动写入，可手动改")
+                mac_url = st.text_input("macOS zip URL",
+                                        value=cfg.get("macos_url", ""))
+            notes = st.text_area("更新说明（可选，会显示在客户端弹窗里）",
+                                 value=cfg.get("release_notes", ""), height=80)
+            if st.form_submit_button("保存配置", use_container_width=True):
+                payload = {
+                    "latest_version": latest,
+                    "min_version": minv,
+                    "force_update": "true" if force else "false",
+                    "windows_url": win_url,
+                    "macos_url": mac_url,
+                    "release_notes": notes,
+                }
+                r = api("POST", "/api/admin/config",
+                        json=payload, admin_token=admin_token)
+                if r.status_code == 200:
+                    st.success("✅ 已保存")
+                    st.rerun()
+                else:
+                    st.error(r.json().get("detail", "保存失败"))
+
+    st.divider()
+
     # 拉用户列表
     r = api("GET", "/api/admin/users", admin_token=admin_token)
     users = r.json() if r.status_code == 200 else []

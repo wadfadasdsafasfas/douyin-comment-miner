@@ -21,12 +21,27 @@ try:
 except Exception:
     _CONFIG_SERVER = None
 
+# 客户端版本号 —— 每次发版手工 bump（与 Git tag 一致）
+__version__ = "1.3.0"
+
 # 服务端地址 —— 打包前改 server_url.py 中的 SERVER_URL；也可通过环境变量覆盖
 SERVER_URL = (
     os.environ.get("DOUYIN_MINER_SERVER")
     or _CONFIG_SERVER
     or "http://localhost:8000"
 ).rstrip("/")
+
+
+# ---------- 版本号工具 ----------
+def _ver_tuple(v: str) -> tuple[int, ...]:
+    try:
+        return tuple(int(x) for x in v.strip().split(".") if x.isdigit())
+    except Exception:
+        return (0,)
+
+
+def _ver_lt(a: str, b: str) -> bool:
+    return _ver_tuple(a) < _ver_tuple(b)
 
 
 def _config_dir() -> Path:
@@ -82,17 +97,21 @@ class License:
 
     # ---------- 网络 ----------
     def _post(self, path, **kw):
-        r = requests.post(f"{self.server_url}{path}", timeout=10, **kw)
-        return r
+        kw.setdefault("timeout", 10)
+        return requests.post(f"{self.server_url}{path}", **kw)
 
     def _get(self, path, **kw):
-        r = requests.get(f"{self.server_url}{path}", timeout=10, **kw)
-        return r
+        kw.setdefault("timeout", 10)
+        return requests.get(f"{self.server_url}{path}", **kw)
 
     # ---------- API ----------
     def login(self, username: str, password: str) -> tuple[bool, str]:
         try:
-            r = self._post("/api/login", json={"username": username, "password": password})
+            r = self._post("/api/login", json={
+                "username": username,
+                "password": password,
+                "client_version": __version__,
+            })
         except requests.exceptions.RequestException as e:
             return False, f"连不上服务器 {self.server_url}：{e}"
         if r.status_code != 200:
@@ -105,7 +124,9 @@ class License:
         self.username = d["username"]
         self.expires_at = d["expires_at"]
         self._save()
-        return True, "登录成功"
+        # 服务端可能回传低版本警告（仅提示，没强制）
+        warn = d.get("warn")
+        return True, warn if warn else "登录成功"
 
     def verify(self) -> tuple[bool, str]:
         """校验当前 token 是否还有效（心跳用）。"""
@@ -140,6 +161,28 @@ class License:
             except Exception:
                 pass
         self.clear()
+
+    # ---------- 自动升级 ----------
+    def check_update(self) -> tuple[dict | None, bool, str]:
+        """调用 /api/latest，返回 (info, has_update, reason)
+           info    : 服务端返回的 dict；连不上时为 None
+           has_update : True = 有新版本
+           reason  : "ok" / "network_error" / "newer" / "force"
+        """
+        try:
+            r = self._get("/api/latest", timeout=5)
+        except requests.exceptions.RequestException:
+            return None, False, "network_error"
+        if r.status_code != 200:
+            return None, False, f"http_{r.status_code}"
+        info = r.json()
+        latest = info.get("version", "0.0.0")
+        if _ver_lt(__version__, latest):
+            return info, True, "ok"
+        return info, False, "ok"
+
+    def client_version(self) -> str:
+        return __version__
 
     # ---------- 显示 ----------
     def expiry_date(self) -> str:
