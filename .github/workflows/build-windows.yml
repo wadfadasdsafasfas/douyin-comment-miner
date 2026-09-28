@@ -32,7 +32,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
           python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ `
-            playwright openpyxl customtkinter pyinstaller
+            playwright openpyxl customtkinter pyinstaller requests
 
       - name: 打包（PyInstaller · onedir · windowed）
         run: |
