@@ -12,15 +12,21 @@ from __future__ import annotations
 
 import argparse
 import secrets
+import shutil
 from datetime import datetime
+from pathlib import Path
 
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, File, Form, Header, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
+from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 import auth_db
 
 app = FastAPI(title="DouyinCommentMiner 授权服务", version="1.0")
+
+# 信任 nginx 反向代理的 X-Forwarded-* headers，让 request.base_url 用公网 host
+app.add_middleware(ProxyHeadersMiddleware, trusted_hosts="*")
 
 # CORS — 允许 Streamlit 管理后台跨域调用（8501 → 8000）
 app.add_middleware(
@@ -35,6 +41,7 @@ app.add_middleware(
 class LoginIn(BaseModel):
     username: str
     password: str
+    client_version: str = "0.0.0"   # 客户端版本号（强制升级检查）
 
 
 class CreateUserIn(BaseModel):
@@ -54,6 +61,28 @@ class StatusIn(BaseModel):
 
 class PasswordIn(BaseModel):
     new_password: str
+
+
+class ConfigIn(BaseModel):
+    """admin 设置版本配置"""
+    latest_version: str | None = None
+    min_version: str | None = None
+    force_update: str | None = None   # "true" / "false"
+    windows_url: str | None = None
+    macos_url: str | None = None
+    release_notes: str | None = None
+
+
+# ---------- 版本号工具 ----------
+def _ver_tuple(v: str) -> tuple[int, ...]:
+    try:
+        return tuple(int(x) for x in v.strip().split("."))
+    except Exception:
+        return (0,)
+
+
+def _ver_lt(a: str, b: str) -> bool:
+    return _ver_tuple(a) < _ver_tuple(b)
 
 
 # ---------- 管理员鉴权 ----------
@@ -84,6 +113,24 @@ def _startup():
 # ---------- 客户端接口 ----------
 @app.post("/api/login")
 def login(body: LoginIn):
+    # 强制升级检查
+    cfg = auth_db.get_all_config()
+    min_ver = cfg.get("min_version", "0.0.0")
+    force = cfg.get("force_update", "false") == "true"
+    if min_ver != "0.0.0" and _ver_lt(body.client_version, min_ver):
+        msg = (f"客户端版本过低（当前 {body.client_version}，要求 ≥ {min_ver}），"
+               f"请升级后重试。")
+        if force:
+            # 强制升级：直接 426 拒绝
+            raise HTTPException(426, msg)
+        # 仅提示：把警告塞进响应里，客户端顶栏显示
+        info, dbmsg = auth_db.login(body.username, body.password)
+        if not info:
+            raise HTTPException(401, dbmsg)
+        return {"valid": True, "token": info["token"],
+                "expires_at": info["user_expires_at"],
+                "username": info["username"], "message": "ok",
+                "warn": msg, "min_version": min_ver}
     info, msg = auth_db.login(body.username, body.password)
     if not info:
         raise HTTPException(401, msg)
@@ -188,6 +235,77 @@ def admin_delete_user(username: str, _: str = Depends(require_admin)):
 @app.get("/api/health")
 def health():
     return {"ok": True, "ts": datetime.now().isoformat()}
+
+
+# ---------- 升级相关（无需 token） ----------
+@app.get("/api/latest")
+def latest_version():
+    """客户端启动时调用，检测是否有新版本 / 是否需要强制升级"""
+    cfg = auth_db.get_all_config()
+    return {
+        "version":    cfg.get("latest_version", "1.0.0"),
+        "min_version": cfg.get("min_version", "0.0.0"),
+        "force_update": cfg.get("force_update", "false") == "true",
+        "release_notes": cfg.get("release_notes", ""),
+        "downloads": {
+            "windows": cfg.get("windows_url", ""),
+            "macos":   cfg.get("macos_url", ""),
+        },
+    }
+
+
+# ---------- 管理员：版本配置 ----------
+@app.post("/api/admin/config")
+def admin_set_config(body: ConfigIn, _: str = Depends(require_admin)):
+    """admin 在后台手动设置版本号 / 升级开关 / 下载链接"""
+    for k, v in body.dict(exclude_none=True).items():
+        if v is not None:
+            auth_db.set_config(k, v)
+    return {"ok": True, "config": auth_db.get_all_config()}
+
+
+@app.get("/api/admin/config")
+def admin_get_config(_: str = Depends(require_admin)):
+    return auth_db.get_all_config()
+
+
+# 升级包存放目录（与 nginx alias 对应）
+DOWNLOADS_DIR = Path("/opt/app/downloads")
+
+
+@app.post("/api/admin/upload-zip")
+def admin_upload_zip(
+    request: Request,
+    file: UploadFile = File(...),
+    platform: str = Form(...),   # "windows" / "macos"
+    version: str = Form(...),    # e.g. "1.3.0"（无 v 前缀）
+    _: str = Depends(require_admin),
+):
+    """admin 上传 zip 升级包 + 自动写最新版本号。"""
+    if platform not in ("windows", "macos"):
+        raise HTTPException(400, "platform 必须是 windows 或 macos")
+    DOWNLOADS_DIR.mkdir(parents=True, exist_ok=True)
+
+    # 文件名：DouyinCommentMiner-{platform}-v{version}.zip
+    fname = f"DouyinCommentMiner-{platform}-v{version}.zip"
+    dest = DOWNLOADS_DIR / fname
+
+    # 流式写盘
+    with dest.open("wb") as f:
+        shutil.copyfileobj(file.file, f)
+
+    # 完整下载 URL（用 request 拼出 scheme://host）
+    base = str(request.base_url).rstrip("/")
+    full_url = f"{base}/downloads/{fname}"
+
+    # 同步写 app_config：latest_version / windows_url / macos_url
+    url_key = "windows_url" if platform == "windows" else "macos_url"
+    auth_db.set_config("latest_version", version)
+    auth_db.set_config(url_key, full_url)
+
+    return {"ok": True, "filename": fname, "size": dest.stat().st_size,
+            "url": full_url,
+            "config": auth_db.get_all_config()}
 
 
 if __name__ == "__main__":

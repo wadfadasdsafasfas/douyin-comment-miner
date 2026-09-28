@@ -70,15 +70,28 @@ jobs:
           path: DouyinCommentMiner-windows-*.zip
           if-no-files-found: error
 
-      - name: scp 到服务器（给客户下载升级用）
-        if: ${{ env.SERVER_SSH_KEY != '' }}
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: root
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "DouyinCommentMiner-windows-*.zip"
-          target: /opt/app/downloads/
+      - name: 上传 zip 到服务器（给客户下载升级用）
+        if: ${{ env.SERVER_URL != '' && env.ADMIN_PASSWORD != '' }}
+        env:
+          SERVER_URL: ${{ secrets.SERVER_URL }}
+          ADMIN_USER: ${{ secrets.ADMIN_USER }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VER="${VERSION#v}"   # 去掉 v 前缀
+          ZIP=$(ls DouyinCommentMiner-windows-${VERSION}.zip | head -1)
+          # 1. admin 登录拿 token
+          TOKEN=$(curl -fsS -X POST "${SERVER_URL}/api/admin/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\":\"${ADMIN_USER}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin)["admin_token"])')
+          # 2. 上传 zip + 自动写版本信息
+          curl -fsS -X POST "${SERVER_URL}/api/admin/upload-zip" \
+            -H "X-Admin-Token: ${TOKEN}" \
+            -F "file=@${ZIP}" \
+            -F "platform=windows" \
+            -F "version=${VER}" \
+            && echo "✅ ${ZIP} 已上传到服务器"
 
   # ============================================================
   #  2. macOS 打包：产出 .app bundle
@@ -136,15 +149,26 @@ jobs:
           path: DouyinCommentMiner-macOS-*.zip
           if-no-files-found: error
 
-      - name: scp 到服务器（给客户下载升级用）
-        if: ${{ env.SERVER_SSH_KEY != '' }}
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.SERVER_HOST }}
-          username: root
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          source: "DouyinCommentMiner-macOS-*.zip"
-          target: /opt/app/downloads/
+      - name: 上传 zip 到服务器（给客户下载升级用）
+        if: ${{ env.SERVER_URL != '' && env.ADMIN_PASSWORD != '' }}
+        env:
+          SERVER_URL: ${{ secrets.SERVER_URL }}
+          ADMIN_USER: ${{ secrets.ADMIN_USER }}
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          VERSION: ${{ github.ref_name }}
+        run: |
+          VER="${VERSION#v}"
+          ZIP=$(ls DouyinCommentMiner-macOS-${VERSION}.zip | head -1)
+          TOKEN=$(curl -fsS -X POST "${SERVER_URL}/api/admin/login" \
+            -H 'Content-Type: application/json' \
+            -d "{\"username\":\"${ADMIN_USER}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
+            | python3 -c 'import sys,json;print(json.load(sys.stdin)["admin_token"])')
+          curl -fsS -X POST "${SERVER_URL}/api/admin/upload-zip" \
+            -H "X-Admin-Token: ${TOKEN}" \
+            -F "file=@${ZIP}" \
+            -F "platform=macos" \
+            -F "version=${VER}" \
+            && echo "✅ ${ZIP} 已上传到服务器"
 
   # ============================================================
   #  3. 汇总 Release：等上面两个都跑完，把 zip 附到同一个 release
@@ -169,30 +193,5 @@ jobs:
           generate_release_notes: true
           fail_on_unmatched_files: true
 
-      # 通知服务器：新版本上线（写 windows_url / macos_url / latest_version）
-      # admin 密码从 secrets 读，登录拿 token，调 /api/admin/config
-      - name: 把版本信息写入授权服务器
-        if: ${{ env.ADMIN_PASSWORD != '' }}
-        env:
-          SERVER: ${{ secrets.SERVER_URL }}
-          ADMIN_USER: ${{ secrets.ADMIN_USER }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-          VERSION: ${{ github.ref_name }}    # e.g. v1.3.0
-        run: |
-          # 从 tag 名剥掉 'v' 前缀作为版本号
-          VER="${VERSION#v}"
-          WIN_URL="${SERVER}/downloads/DouyinCommentMiner-windows-${VERSION}.zip"
-          MAC_URL="${SERVER}/downloads/DouyinCommentMiner-macOS-${VERSION}.zip"
-
-          # 1. admin 登录拿 token
-          TOKEN=$(curl -fsS -X POST "${SERVER}/api/admin/login" \
-            -H 'Content-Type: application/json' \
-            -d "{\"username\":\"${ADMIN_USER}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
-            | python3 -c 'import sys,json;print(json.load(sys.stdin)["admin_token"])')
-
-          # 2. 写版本信息
-          curl -fsS -X POST "${SERVER}/api/admin/config" \
-            -H "X-Admin-Token: ${TOKEN}" \
-            -H 'Content-Type: application/json' \
-            -d "{\"latest_version\":\"${VER}\",\"windows_url\":\"${WIN_URL}\",\"macos_url\":\"${MAC_URL}\"}" \
-            && echo "✅ 已把 ${VER} 写入服务器配置"
+      # 注：build-windows / build-macos job 已经把 zip 上传到服务器并写好 latest_version，
+      # 这里不用重复做。
