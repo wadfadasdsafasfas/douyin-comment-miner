@@ -70,29 +70,7 @@ jobs:
           path: DouyinCommentMiner-windows-*.zip
           if-no-files-found: error
 
-      - name: 上传 zip 到服务器（给客户下载升级用）
-        if: ${{ env.SERVER_URL != '' && env.ADMIN_PASSWORD != '' }}
-        shell: bash
-        env:
-          SERVER_URL: ${{ secrets.SERVER_URL }}
-          ADMIN_USER: ${{ secrets.ADMIN_USER }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-          VERSION: ${{ github.ref_name }}
-        run: |
-          VER="${VERSION#v}"   # 去掉 v 前缀
-          ZIP=$(ls DouyinCommentMiner-windows-${VERSION}.zip | head -1)
-          # 1. admin 登录拿 token
-          TOKEN=$(curl -fsS -X POST "${SERVER_URL}/api/admin/login" \
-            -H 'Content-Type: application/json' \
-            -d "{\"username\":\"${ADMIN_USER}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
-            | python3 -c 'import sys,json;print(json.load(sys.stdin)["admin_token"])')
-          # 2. 上传 zip + 自动写版本信息
-          curl -fsS -X POST "${SERVER_URL}/api/admin/upload-zip" \
-            -H "X-Admin-Token: ${TOKEN}" \
-            -F "file=@${ZIP}" \
-            -F "platform=windows" \
-            -F "version=${VER}" \
-            && echo "✅ ${ZIP} 已上传到服务器"
+      # 注：上传 zip 到 server 改由本地 rsync 完成（GitHub Actions runner 到国内云服务器网络不稳）
 
   # ============================================================
   #  2. macOS 打包：产出 .app bundle
@@ -150,27 +128,7 @@ jobs:
           path: DouyinCommentMiner-macOS-*.zip
           if-no-files-found: error
 
-      - name: 上传 zip 到服务器（给客户下载升级用）
-        if: ${{ env.SERVER_URL != '' && env.ADMIN_PASSWORD != '' }}
-        shell: bash
-        env:
-          SERVER_URL: ${{ secrets.SERVER_URL }}
-          ADMIN_USER: ${{ secrets.ADMIN_USER }}
-          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
-          VERSION: ${{ github.ref_name }}
-        run: |
-          VER="${VERSION#v}"
-          ZIP=$(ls DouyinCommentMiner-macOS-${VERSION}.zip | head -1)
-          TOKEN=$(curl -fsS -X POST "${SERVER_URL}/api/admin/login" \
-            -H 'Content-Type: application/json' \
-            -d "{\"username\":\"${ADMIN_USER}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
-            | python3 -c 'import sys,json;print(json.load(sys.stdin)["admin_token"])')
-          curl -fsS -X POST "${SERVER_URL}/api/admin/upload-zip" \
-            -H "X-Admin-Token: ${TOKEN}" \
-            -F "file=@${ZIP}" \
-            -F "platform=macos" \
-            -F "version=${VER}" \
-            && echo "✅ ${ZIP} 已上传到服务器"
+      # 注：上传 zip 到 server 改由本地 rsync 完成（GitHub Actions runner 到国内云服务器网络不稳）
 
   # ============================================================
   #  3. 汇总 Release：等上面两个都跑完，把 zip 附到同一个 release
