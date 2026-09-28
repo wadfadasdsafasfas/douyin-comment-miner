@@ -10,6 +10,7 @@ on:
   push:
     tags:
       - 'v*'
+  workflow_dispatch:    # 允许 Actions 页面手动 Run workflow（断网/漏触发时备用）
 
 permissions:
   contents: write   # 创建 Release 需要写权限
