@@ -186,6 +186,8 @@ def main() -> int:
     parser.add_argument("--src", default=None,
                         help=f"切图包 logo 目录（默认优先 {DEFAULT_SRC}，"
                              f"fallback 到 {LOCAL_FALLBACK_SRC}）")
+    parser.add_argument("--strict", action="store_true",
+                        help="失败时返回非零退出码（默认：失败仅 warning，CI 友好）")
     args = parser.parse_args()
 
     # 优先级：--src 指定 > 仓内 assets-src > 本地切图包
@@ -203,12 +205,14 @@ def main() -> int:
             break
 
     if src is None:
-        print("错误：找不到 SVG 资源")
+        msg = "错误：找不到 SVG 资源（CI 上复用已入仓的 assets/ 即可）"
+        print(msg)
         for c in candidates:
             print(f"  试过: {c}  "
                   f"(app-icon.svg={ (c/'app-icon.svg').exists() },"
                   f" logo-mono.svg={ (c/'logo-mono.svg').exists() })")
-        return 1
+        # 非严格模式下：找不到 SVG 时也算 warning（CI 上 assets/ 已有产物）
+        return 1 if args.strict else 0
 
     app_svg = src / "app-icon.svg"
     mono_svg = src / "logo-mono.svg"
@@ -218,14 +222,26 @@ def main() -> int:
     print(f"源目录：{src}")
     print(f"输出目录：{ASSETS}\n")
 
-    gen_tray_idle(mono_svg)
-    gen_tray_busy(mono_svg)
-    gen_notify_icon(mono_svg)
-    gen_app_ico(app_svg)
-    gen_app_icns(app_svg)
+    # 跨平台注意：Windows 上 Pillow 不支持 ICNS 写入；
+    # ICNS 由 build-macos job 生成。Windows runner 上跳过 ICNS 步骤。
+    is_macos = sys.platform == "darwin"
 
-    print("\n✓ 完成")
-    return 0
+    # 尝试 SVG 渲染；如果 renderer 全失败（CI Windows runner），不抛异常而是 warning
+    try:
+        gen_tray_idle(mono_svg)
+        gen_tray_busy(mono_svg)
+        gen_notify_icon(mono_svg)
+        gen_app_ico(app_svg)
+        if is_macos:
+            gen_app_icns(app_svg)
+        else:
+            print("[skip] app.icns (Windows runner 不能生成 ICNS，由 build-macos job 处理)")
+        print("\n✓ 完成")
+        return 0
+    except Exception as e:
+        print(f"\n[warn] 生成失败：{e}")
+        print("       CI 模式：复用已入仓的 desktop/assets/ 产物，继续打包")
+        return 1 if args.strict else 0
 
 
 if __name__ == "__main__":

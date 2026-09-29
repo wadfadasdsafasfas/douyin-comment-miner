@@ -32,13 +32,15 @@ jobs:
           python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
           python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ `
             playwright openpyxl customtkinter pyinstaller requests `
-            pystray Pillow
+            pystray Pillow `
+            cairosvg
 
       - name: L2 资产生成（PNG / ICO / ICNS）
         run: |
-          # CI runner 通常拿不到用户本地的切图包；优先用 tools/build_assets.py 默认路径
-          # （如果 runner 把切图包放在固定路径，可加 --src 覆盖）
-          python tools/build_assets.py
+          # 产物（tray-idle.png / app.ico / app.icns 等）已入仓 desktop/assets/，
+          # CI 上尽量复用；本地开发者改 SVG 后跑 tools/build_assets.py 重新生成。
+          # || true 是为了 Windows runner 缺 rsvg-convert / cairosvg 时不阻断构建。
+          python tools/build_assets.py || echo "[warn] build_assets.py 失败，但产物已入仓，继续打包"
 
       - name: PyInstaller · onedir · windowed
         run: |
@@ -101,12 +103,14 @@ jobs:
           python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
           python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ \
             playwright openpyxl customtkinter pyinstaller requests \
-            pystray Pillow
+            pystray Pillow \
+            cairosvg
 
       - name: L2 资产生成（PNG / ICO / ICNS）
         run: |
           python tools/build_assets.py --src "/Users/runner/work/_temp/听潮-切图-多彩数据版/logo" || \
-          python tools/build_assets.py
+          python tools/build_assets.py || \
+          echo "[warn] build_assets.py 失败，但产物已入仓，继续打包"
 
       - name: PyInstaller · onedir · windowed
         run: |
