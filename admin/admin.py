@@ -35,8 +35,107 @@ def api(method: str, path: str, json=None, params=None, admin_token: str | None 
         st.stop()
 
 
-st.set_page_config(page_title="DouyinCommentMiner 管理后台",
-                   page_icon="🔐", layout="wide")
+st.set_page_config(page_title="听潮 · 控制台",
+                   page_icon="🐙", layout="wide")
+
+# ===== 品牌色 CSS 注入（听潮 设计 token） =====
+# 颜色全部对齐客户端 GUI 的 token（见 douyin_miner_gui.py）
+_BRAND = "#FF4D4D"
+_BRAND_INK = "#DE3232"
+_BRAND_SOFT = "#FFEDEC"
+_INK = "#171A26"
+_INK2 = "#5A6072"
+_INK3 = "#9AA0B4"
+_LINE = "#EBEBF2"
+_LINE2 = "#DEDEE9"
+_BG = "#F5F5FA"
+_SURFACE2 = "#F8F8FC"
+_TEAL = "#0FB5A5"
+_TEAL_SOFT = "#E2F7F4"
+_AMBER = "#FFB020"
+_AMBER_SOFT = "#FFF4DC"
+
+st.markdown(f"""
+<style>
+  /* 整体页面 */
+  .stApp {{ background: {_BG}; }}
+  [data-testid="stSidebar"] {{ background: {_SURFACE2}; }}
+  /* 主文字 / 标题 */
+  h1, h2, h3, p, span, label, .stMarkdown, .stText, .stCaption {{
+    color: {_INK} !important;
+  }}
+  .stCaption, small {{ color: {_INK3} !important; }}
+  /* 输入框 / 表单 */
+  .stTextInput input, .stTextArea textarea, .stDateInput input,
+  .stNumberInput input, .stSelectbox div[data-baseweb="select"] > div {{
+    background: #FFFFFF !important;
+    border: 1px solid {_LINE2} !important;
+    border-radius: 10px !important;
+    color: {_INK} !important;
+  }}
+  /* 主按钮（form_submit_button type=primary） */
+  .stFormSubmitButton button, button[kind="primary"] {{
+    background: {_BRAND} !important;
+    color: #fff !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-weight: 600 !important;
+  }}
+  .stFormSubmitButton button:hover, button[kind="primary"]:hover {{
+    background: {_BRAND_INK} !important;
+  }}
+  /* 次按钮 */
+  button[kind="secondary"], .stButton button {{
+    background: #FFFFFF !important;
+    color: {_INK2} !important;
+    border: 1px solid {_LINE2} !important;
+    border-radius: 10px !important;
+  }}
+  /* expander 卡片化 */
+  details[data-testid="stExpander"] {{
+    background: #FFFFFF !important;
+    border: 1px solid {_LINE} !important;
+    border-radius: 14px !important;
+    box-shadow: 0 1px 2px rgba(23,26,38,.05);
+    padding: 4px 8px;
+  }}
+  details[data-testid="stExpander"] summary {{
+    color: {_INK} !important;
+    font-weight: 700 !important;
+  }}
+  /* st.metric KPI 卡片 */
+  [data-testid="stMetric"] {{
+    background: #FFFFFF;
+    border: 1px solid {_LINE};
+    border-radius: 14px;
+    padding: 18px 20px;
+    box-shadow: 0 1px 2px rgba(23,26,38,.05);
+  }}
+  [data-testid="stMetric"] label {{ color: {_INK3} !important; font-size: 12.5px !important; }}
+  [data-testid="stMetricValue"] {{ color: {_INK} !important; font-size: 26px !important; font-weight: 700 !important; }}
+  /* st.popover / st.form 容器 */
+  [data-testid="stPopover"], [data-testid="stForm"] {{
+    background: #FFFFFF !important;
+    border: 1px solid {_LINE} !important;
+    border-radius: 12px !important;
+  }}
+  /* checkbox 颜色 */
+  .stCheckbox label {{ color: {_INK} !important; }}
+  /* 标签页 */
+  .stTabs [data-baseweb="tab-list"] button {{
+    color: {_INK2} !important;
+    border-radius: 9px !important;
+  }}
+  .stTabs [aria-selected="true"] {{
+    color: {_BRAND_INK} !important;
+    background: {_BRAND_SOFT} !important;
+  }}
+  /* 成功 / 错误 */
+  .stAlert {{ border-radius: 12px !important; }}
+  /* divider */
+  hr {{ border-color: {_LINE} !important; }}
+</style>
+""", unsafe_allow_html=True)
 
 # ---------- 登录态 ----------
 if "admin_token" not in st.session_state:
@@ -63,15 +162,51 @@ def login_page():
 def main_page():
     admin_token = st.session_state.admin_token
 
-    # 顶栏
+    # 顶栏（听潮品牌）
     c1, c2 = st.columns([6, 1])
     with c1:
-        st.title("👥 用户管理")
+        st.markdown(
+            "<h1 style='margin-bottom:0'>🐙 听潮 · 控制台</h1>"
+            "<small style='color:#9AA0B4;font-weight:600;letter-spacing:.14em'>TIDE SIGNAL · 用户管理</small>",
+            unsafe_allow_html=True,
+        )
     with c2:
         if st.button("退出登录"):
             api("POST", "/api/admin/logout", admin_token=admin_token)
             st.session_state.admin_token = None
             st.rerun()
+
+    st.write("")  # 间距
+
+    # ===== KPI 4 卡片（HTML .kpis） — 从用户列表算出来 =====
+    try:
+        users_r = api("GET", "/api/admin/users", admin_token=admin_token)
+        users = users_r.json() if users_r.status_code == 200 else []
+    except Exception:
+        users = []
+
+    if users:
+        from datetime import date
+        today = date.today()
+        total = len(users)
+        active = sum(1 for u in users if u["status"] == "active" and not u["expired"])
+        disabled = sum(1 for u in users if u["status"] != "active")
+        expiring = 0
+        for u in users:
+            if u["status"] == "active" and not u["expired"]:
+                try:
+                    exp_d = date.fromisoformat(u["expires_at"][:10])
+                    if (exp_d - today).days <= 30:
+                        expiring += 1
+                except Exception:
+                    pass
+        kc1, kc2, kc3, kc4 = st.columns(4)
+        with kc1: st.metric("用户总数", total)
+        with kc2: st.metric("活跃授权", active)
+        with kc3: st.metric("30 天内到期", expiring, delta_color="off")
+        with kc4: st.metric("已停用", disabled)
+
+    st.write("")
 
     # ===== 版本配置 / 自动升级 =====
     with st.expander("📌 版本配置 & 自动升级", expanded=False):
