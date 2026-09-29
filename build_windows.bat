@@ -19,9 +19,13 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo [1/4] 安装依赖 playwright / openpyxl / customtkinter / pystray / pyinstaller（用阿里云镜像）...
-python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
-python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ playwright openpyxl customtkinter pyinstaller requests pystray Pillow
+echo [1/4] 安装依赖 playwright / openpyxl / customtkinter / pystray / pyinstaller（用清华+阿里云镜像）...
+python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+python -m pip install ^
+  --index-url https://pypi.tuna.tsinghua.edu.cn/simple ^
+  --extra-index-url https://mirrors.aliyun.com/pypi/simple/ ^
+  --extra-index-url https://pypi.org/simple ^
+  playwright openpyxl customtkinter pyinstaller requests pystray Pillow
 if errorlevel 1 (
   echo [!] 依赖安装失败，多半是网络问题，稍后重试。
   pause

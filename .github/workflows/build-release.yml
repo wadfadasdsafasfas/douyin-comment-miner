@@ -27,10 +27,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 安装依赖（阿里云镜像，国内 CI 友好）
+      - name: 安装依赖（清华 pip 镜像 + 阿里云 fallback，国内 CI 友好）
         run: |
-          python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
-          python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ `
+          python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+          python -m pip install `
+            --index-url https://pypi.tuna.tsinghua.edu.cn/simple `
+            --extra-index-url https://mirrors.aliyun.com/pypi/simple/ `
+            --extra-index-url https://pypi.org/simple `
             playwright openpyxl customtkinter pyinstaller requests `
             pystray Pillow `
             cairosvg
@@ -98,10 +101,13 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 安装依赖（阿里云镜像，国内 CI 友好）
+      - name: 安装依赖（清华 pip 镜像 + 阿里云 fallback，国内 CI 友好）
         run: |
-          python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
-          python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ \
+          python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
+          python -m pip install \
+            --index-url https://pypi.tuna.tsinghua.edu.cn/simple \
+            --extra-index-url https://mirrors.aliyun.com/pypi/simple/ \
+            --extra-index-url https://pypi.org/simple \
             playwright openpyxl customtkinter pyinstaller requests \
             pystray Pillow \
             cairosvg
