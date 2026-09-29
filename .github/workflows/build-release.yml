@@ -113,11 +113,17 @@ jobs:
       # - name: 下载 Chromium 内核
       #   run: python -m playwright install chromium
 
-      - name: 打 zip（.app 整个打成 zip）
+      - name: 打 zip（加包裹层，跟 Windows 对齐）
         run: |
           ZIPNAME="DouyinCommentMiner-macOS-${{ github.ref_name }}.zip"
           cd dist
-          zip -r "../$ZIPNAME" DouyinCommentMiner.app
+          # 加一层包裹：dist/DouyinCommentMiner/DouyinCommentMiner.app/
+          # 这样 updater 解压后能用 install_root/DouyinCommentMiner/DouyinCommentMiner.app 路径定位
+          mkdir -p DouyinCommentMiner
+          mv DouyinCommentMiner.app DouyinCommentMiner/
+          # 排除 macOS 垃圾文件（避免升级包混入 .DS_Store）
+          zip -r "../$ZIPNAME" DouyinCommentMiner \
+              -x "**/.DS_Store" "**/__MACOSX/*" "**/.git/*"
           cd ..
           ls -la "$ZIPNAME"
 

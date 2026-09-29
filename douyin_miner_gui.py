@@ -381,7 +381,9 @@ class App(ctk.CTk):
             relpath = "DouyinCommentMiner.exe"
         elif sysname == "darwin":
             url = (info.get("downloads") or {}).get("macos", "")
-            relpath = "DouyinCommentMiner.app"
+            # 新 zip 结构：install_root/DouyinCommentMiner/DouyinCommentMiner.app
+            # （v1.3.4 起 macOS zip 加了包裹层，跟 Windows 对齐）
+            relpath = "DouyinCommentMiner/DouyinCommentMiner.app"
         else:
             url = ""
             relpath = "DouyinCommentMiner"
@@ -409,6 +411,13 @@ class App(ctk.CTk):
                 if getattr(sys, "frozen", False):
                     # PyInstaller --onedir 模式
                     exe_dir = Path(sys.executable).parent
+                    if sys.platform == "darwin":
+                        # sys.executable = .app/Contents/MacOS/DouyinCommentMiner
+                        # exe_dir = .app/Contents/MacOS/   (.parent)
+                        #          .app/Contents/           (.parent.parent)
+                        #          .app/                    (.parent.parent.parent) ← .app 根
+                        # 把 _update/ 放在 .app/ 根，让 updater 解压时能覆盖整个 .app
+                        exe_dir = exe_dir.parent.parent.parent
                 else:
                     exe_dir = Path(__file__).parent.resolve()
                 update_dir = exe_dir / "_update"
