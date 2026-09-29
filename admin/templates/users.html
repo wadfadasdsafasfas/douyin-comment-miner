@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}用户管理 · 听潮 · 控制台{% endblock %}
+{% block crumb %}管理 / <b>用户管理</b>{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div>
+    <div class="tc-page-title">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-user"/></svg>
+      用户管理
+    </div>
+    <div style="font-size:13px;color:var(--tc-ink-3);margin-top:6px">共 <span class="tc-num">{{ rows|length }}</span> 个用户 · 含管理员</div>
+  </div>
+  <div style="display:flex;gap:9px">
+    <button class="tc-btn tc-btn-primary" onclick="openModal('m-create')">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-plus"/></svg>
+      创建用户
+    </button>
+  </div>
+</div>
+
+<div class="tc-toolbar" style="margin-bottom:14px">
+  <div class="tc-input-wrap" style="flex:1;max-width:340px">
+    <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-search"/></svg>
+    <input id="user-search" class="tc-input" placeholder="搜索用户名 / 备注…">
+  </div>
+  <div class="tc-toolbar-divider"></div>
+  <span style="font-size:12.5px;color:var(--tc-ink-3)">
+    显示 <span class="tc-num" id="visible-count" style="font-weight:700;color:var(--tc-ink)">{{ rows|length }}</span> / <span class="tc-num">{{ rows|length }}</span>
+  </span>
+</div>
+
+<div class="tc-card">
+  <div class="tc-table-wrap" style="border:none">
+    <table class="tc-table">
+      <thead>
+        <tr>
+          <th style="width:240px">用户</th>
+          <th style="width:130px">到期日</th>
+          <th style="width:120px">状态</th>
+          <th style="width:120px">创建</th>
+          <th>备注</th>
+          <th style="width:180px;text-align:right">操作</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in rows %}
+        <tr class="user-row"
+            data-search="{{ (r.username + ' ' + (r.note or ''))|lower }}">
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="tc-avatar tc-avatar-sm {% if r.is_admin %}tc-avatar-grad{% else %}tc-avatar-sys{% endif %}">{{ r.username[0]|upper }}</div>
+              <div>
+                <div style="font-weight:600">{{ r.username }}</div>
+                {% if r.is_admin %}<div style="font-size:10.5px;color:var(--tc-violet);font-weight:600;letter-spacing:.04em">管理员</div>{% endif %}
+              </div>
+            </div>
+          </td>
+          <td>
+            <div class="tc-num" style="font-weight:600">{{ r.expires_at }}</div>
+            {% if r.days_left is not none %}
+              {% if r.days_left < 0 %}
+                <div class="tc-num" style="font-size:11px;color:var(--tc-danger);font-weight:700;margin-top:2px">已过期 {{ -r.days_left }} 天</div>
+              {% elif r.days_left <= 30 %}
+                <div class="tc-num" style="font-size:11px;color:var(--tc-warning);font-weight:700;margin-top:2px">剩 {{ r.days_left }} 天</div>
+              {% endif %}
+            {% endif %}
+          </td>
+          <td>
+            {% if r.status_chip == 'chip-teal' %}
+              <span class="tc-pill tc-pill-success"><span class="tc-dot"></span>{{ r.status_text }}</span>
+            {% elif r.status_chip == 'chip-red' %}
+              <span class="tc-pill tc-pill-danger"><span class="tc-dot"></span>{{ r.status_text }}</span>
+            {% elif r.status_chip == 'chip-amber' %}
+              <span class="tc-pill tc-pill-warning"><span class="tc-dot"></span>{{ r.status_text }}</span>
+            {% else %}
+              <span class="tc-pill tc-pill-neutral"><span class="tc-dot"></span>{{ r.status_text }}</span>
+            {% endif %}
+          </td>
+          <td class="tc-num is-muted" style="font-size:12.5px">{{ r.created_at }}</td>
+          <td style="color:var(--tc-ink-2);font-size:12.5px">
+            {% if r.note %}{{ r.note }}{% else %}<span class="is-muted">—</span>{% endif %}
+          </td>
+          <td>
+            {% if not r.is_admin %}
+            <div class="tc-row-actions" style="opacity:1;justify-content:flex-end">
+              <button class="tc-iconbtn" title="改到期" onclick="actExpiry('{{ r.username }}', '{{ r.expires_at }}')">
+                <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-calendar"/></svg>
+              </button>
+              <button class="tc-iconbtn" title="改密码" onclick="actPassword('{{ r.username }}')">
+                <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-settings"/></svg>
+              </button>
+              <button class="tc-iconbtn" title="切换状态" onclick="actStatus('{{ r.username }}')">
+                <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-refresh"/></svg>
+              </button>
+              <button class="tc-iconbtn" title="删除" onclick="actDelete('{{ r.username }}')">
+                <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-trash"/></svg>
+              </button>
+            </div>
+            {% else %}
+              <span style="font-size:12px;color:var(--tc-ink-3);text-align:right;display:block">—</span>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- 创建用户 modal -->
+<div class="tc-overlay" id="m-create">
+  <div class="tc-modal">
+    <div class="tc-modal-head">
+      <div>
+        <div class="tc-modal-title">创建新用户</div>
+        <div class="tc-modal-sub">分配初始密码 + 有效天数</div>
+      </div>
+      <button class="tc-modal-close" onclick="closeModal('m-create')">
+        <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-close"/></svg>
+      </button>
+    </div>
+    <form method="post" action="/admin/users/create">
+      <div class="tc-modal-body">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="tc-field">
+            <label class="tc-label">用户名</label>
+            <input class="tc-input" type="text" name="username" required autofocus>
+          </div>
+          <div class="tc-field">
+            <label class="tc-label">初始密码</label>
+            <input class="tc-input" type="text" name="password" value="changeme123" required>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+          <div class="tc-field">
+            <label class="tc-label">到期日期</label>
+            <input class="tc-input" type="date" name="expires_at" value="{{ default_expiry }}" required>
+            <div style="font-size:11.5px;color:var(--tc-ink-3);margin-top:5px">默认 30 天后，可在创建后再改</div>
+          </div>
+          <div class="tc-field">
+            <label class="tc-label">备注（客户名 / 订单号）</label>
+            <input class="tc-input" type="text" name="note" placeholder="可选">
+          </div>
+        </div>
+      </div>
+      <div class="tc-modal-foot">
+        <button type="button" class="tc-btn tc-btn-ghost" onclick="closeModal('m-create')">取消</button>
+        <button type="submit" class="tc-btn tc-btn-primary">创建</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 改到期 modal -->
+<div class="tc-overlay" id="m-expiry">
+  <div class="tc-modal">
+    <div class="tc-modal-head">
+      <div>
+        <div class="tc-modal-title m-title">改到期</div>
+        <div class="tc-modal-sub">选择新到期日，或用快捷选项</div>
+      </div>
+      <button class="tc-modal-close" onclick="closeModal('m-expiry')">
+        <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-close"/></svg>
+      </button>
+    </div>
+    <form method="post" action="/admin/users/CHANGE/expiry".replace("CHANGE", "")>
+      <input type="hidden" name="username" value="">
+      <div class="tc-modal-body">
+        <div class="tc-field" style="margin-bottom:14px">
+          <label class="tc-label">快捷</label>
+          <select class="tc-select" data-quick-expiry>
+            {% for label, val in quick_options %}
+              <option value="{{ val or '' }}">{{ label }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div class="tc-field">
+          <label class="tc-label">新到期日期</label>
+          <input class="tc-input" type="date" name="new_expires" required>
+        </div>
+      </div>
+      <div class="tc-modal-foot">
+        <button type="button" class="tc-btn tc-btn-ghost" onclick="closeModal('m-expiry')">取消</button>
+        <button type="submit" class="tc-btn tc-btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 改密码 modal -->
+<div class="tc-overlay" id="m-password">
+  <div class="tc-modal">
+    <div class="tc-modal-head">
+      <div>
+        <div class="tc-modal-title m-title">改密码</div>
+        <div class="tc-modal-sub">为该用户重置密码</div>
+      </div>
+      <button class="tc-modal-close" onclick="closeModal('m-password')">
+        <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-close"/></svg>
+      </button>
+    </div>
+    <form method="post" action="/admin/users/CHANGE/password".replace("CHANGE", "")>
+      <input type="hidden" name="username" value="">
+      <div class="tc-modal-body">
+        <div class="tc-field">
+          <label class="tc-label">新密码</label>
+          <input class="tc-input" type="text" name="new_password" required minlength="4" autofocus>
+          <div style="font-size:11.5px;color:var(--tc-ink-3);margin-top:5px">建议 6 位以上字母数字组合</div>
+        </div>
+      </div>
+      <div class="tc-modal-foot">
+        <button type="button" class="tc-btn tc-btn-ghost" onclick="closeModal('m-password')">取消</button>
+        <button type="submit" class="tc-btn tc-btn-primary">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 切换状态 modal -->
+<div class="tc-overlay" id="m-status">
+  <div class="tc-modal">
+    <div class="tc-modal-head">
+      <div>
+        <div class="tc-modal-title m-title">切换状态</div>
+        <div class="tc-modal-sub">在「启用」和「停用」之间切换</div>
+      </div>
+      <button class="tc-modal-close" onclick="closeModal('m-status')">
+        <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-close"/></svg>
+      </button>
+    </div>
+    <form method="post" action="/admin/users/CHANGE/status".replace("CHANGE", "")>
+      <input type="hidden" name="username" value="">
+      <div class="tc-modal-body">
+        <div style="background:var(--tc-surface-2);border:1px solid var(--tc-line);color:var(--tc-ink-2);padding:14px;border-radius:10px;font-size:13px;line-height:1.6">
+          停用后该用户将无法登录；可随时再启用。
+        </div>
+      </div>
+      <div class="tc-modal-foot">
+        <button type="button" class="tc-btn tc-btn-ghost" onclick="closeModal('m-status')">取消</button>
+        <button type="submit" class="tc-btn tc-btn-primary">确认切换</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block toasts %}
+  {% if msg %}
+    {% if ok %}
+      <div class="tc-toasts"><div class="tc-toast tc-toast-success"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-check"/></svg> {{ msg }}</div></div>
+    {% else %}
+      <div class="tc-toasts"><div class="tc-toast tc-toast-danger"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-alert"/></svg> {{ msg }}</div></div>
+    {% endif %}
+  {% endif %}
+{% endblock %}
+
+<script>
+// 把 form action 里的 CHANGE 替换成真实 username（从 modal 里的 hidden username 拿到）
+document.querySelectorAll('.tc-overlay form').forEach(f=>{
+  if(f.action.includes('CHANGE')){
+    const orig = f.action;
+    f.addEventListener('submit',e=>{
+      const u = f.querySelector('[name=username]').value;
+      if(u) f.action = orig.replace('CHANGE', u);
+    });
+  }
+});
+</script>

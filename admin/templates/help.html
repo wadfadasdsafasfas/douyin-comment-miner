@@ -1,0 +1,118 @@
+{% extends "base.html" %}
+{% block title %}使用说明 · 听潮 · 控制台{% endblock %}
+{% block crumb %}系统 / <b>使用说明</b>{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div>
+    <div class="tc-page-title">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-help"/></svg>
+      使用说明
+    </div>
+    <div style="font-size:13px;color:var(--tc-ink-3);margin-top:6px">听潮控制台管理员手册</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+
+  <div class="tc-card">
+    <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line)">
+      <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <svg class="tc-icon" style="color:var(--tc-brand)"><use href="/admin/static/icons/sprite.svg#tc-check-square"/></svg>
+        核心流程
+      </h3>
+    </div>
+    <div class="tc-card-pad">
+      <ol style="margin:0;padding-left:18px;color:var(--tc-ink-2);font-size:13.5px;line-height:2">
+        <li>创建用户（分配初始密码 + 有效天数）</li>
+        <li>把账号密码发给客户，客户在客户端登录</li>
+        <li>客户到期前来后台续期</li>
+        <li>客户端自动检测 <code style="font-family:ui-monospace,Menlo,monospace;background:var(--tc-surface-2);padding:1px 6px;border-radius:5px;color:var(--tc-violet)">/api/latest</code>，有新版就提示升级</li>
+      </ol>
+    </div>
+  </div>
+
+  <div class="tc-card">
+    <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line)">
+      <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <svg class="tc-icon" style="color:var(--tc-violet)"><use href="/admin/static/icons/sprite.svg#tc-user"/></svg>
+        用户管理
+      </h3>
+    </div>
+    <div class="tc-card-pad">
+      <ul style="margin:0;padding-left:18px;color:var(--tc-ink-2);font-size:13.5px;line-height:2">
+        <li><b style="color:var(--tc-ink)">创建</b>：「创建用户」按钮 → 填用户名 / 密码 / 到期日</li>
+        <li><b style="color:var(--tc-ink)">改到期</b>：📅 按钮，可选快捷（+30 / +90 / +1 年 / +3 年）或自定义</li>
+        <li><b style="color:var(--tc-ink)">改密码</b>：🔑 按钮，重置后客户端需重新登录</li>
+        <li><b style="color:var(--tc-ink)">启停</b>：⏻ 按钮，停用后该用户无法登录；可随时恢复</li>
+        <li><b style="color:var(--tc-ink)">删除</b>：🗑 按钮，<span style="color:var(--tc-danger);font-weight:700">不可撤销</span>，所有 token 同步清除</li>
+        <li>管理员账号（<code style="font-family:ui-monospace,Menlo,monospace">admin</code>）不可被改期 / 改密 / 删除</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tc-card">
+    <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line)">
+      <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <svg class="tc-icon" style="color:var(--tc-teal)"><use href="/admin/static/icons/sprite.svg#tc-refresh"/></svg>
+        版本与升级
+      </h3>
+    </div>
+    <div class="tc-card-pad">
+      <ul style="margin:0;padding-left:18px;color:var(--tc-ink-2);font-size:13.5px;line-height:2">
+        <li><b style="color:var(--tc-ink)">最新版本</b>：客户端启动时检测到这个就提示升级</li>
+        <li><b style="color:var(--tc-ink)">最低允许版本</b>：低于这个版本的客户端会被服务端拒绝登录（强制升级）</li>
+        <li><b style="color:var(--tc-ink)">强制升级开关</b>：勾选后最低版本限制生效</li>
+        <li><b style="color:var(--tc-ink)">下载链接</b>：通常是 GitHub Actions 出包后填入</li>
+        <li><b style="color:var(--tc-ink)">更新说明</b>：会显示在客户端升级弹窗里</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tc-card">
+    <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line)">
+      <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <svg class="tc-icon" style="color:var(--tc-amber)"><use href="/admin/static/icons/sprite.svg#tc-alert"/></svg>
+        常见问题
+      </h3>
+    </div>
+    <div class="tc-card-pad">
+      <ul style="margin:0;padding-left:18px;color:var(--tc-ink-2);font-size:13.5px;line-height:2">
+        <li><b style="color:var(--tc-ink)">客户说「升级失败」</b> → 看 <code style="font-family:ui-monospace,Menlo,monospace">/opt/app/downloads/</code> 上的 zip 是否完整（<code style="font-family:ui-monospace,Menlo,monospace">sha256sum</code> 对比 GitHub release）</li>
+        <li><b style="color:var(--tc-ink)">客户说「登录不上」</b> → 看是否到期、是否停用、是否被另一设备顶（单设备登录限制）</li>
+        <li><b style="color:var(--tc-ink)">客户端一直提示升级</b> → 检查 <code style="font-family:ui-monospace,Menlo,monospace">latest_version</code> 是否填错（比如多了空格 / v 前缀）</li>
+        <li><b style="color:var(--tc-ink)">改了配置不生效</b> → 看后端服务进程是否还在；本后台只是入口，所有状态存在后端 SQLite</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="tc-card" style="grid-column:1/-1">
+    <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line)">
+      <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <svg class="tc-icon" style="color:var(--tc-violet)"><use href="/admin/static/icons/sprite.svg#tc-settings"/></svg>
+        API 接口
+      </h3>
+      <p style="font-size:12.5px;color:var(--tc-ink-3);margin-top:6px">所有接口都打到后端 <code style="font-family:ui-monospace,Menlo,monospace;background:var(--tc-surface-2);padding:1px 6px;border-radius:5px;color:var(--tc-violet)">{{ backend }}</code>，带 <code style="font-family:ui-monospace,Menlo,monospace;background:var(--tc-surface-2);padding:1px 6px;border-radius:5px;color:var(--tc-violet)">X-Admin-Token</code> 请求头</p>
+    </div>
+    <div class="tc-card-pad">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px 24px;font-family:ui-monospace,Menlo,monospace;font-size:12.5px;line-height:2">
+        <div><span class="tc-pill tc-pill-success" style="font-family:inherit">GET</span>&nbsp;&nbsp;&nbsp;/api/admin/users</div>
+        <div><span class="tc-pill tc-pill-success" style="font-family:inherit">GET</span>&nbsp;&nbsp;&nbsp;/api/admin/config</div>
+        <div><span class="tc-pill tc-pill-warning" style="font-family:inherit">POST</span>&nbsp;&nbsp;/api/admin/users</div>
+        <div><span class="tc-pill tc-pill-warning" style="font-family:inherit">POST</span>&nbsp;&nbsp;/api/admin/config</div>
+        <div><span class="tc-pill tc-pill-warning" style="font-family:inherit">PATCH</span>&nbsp;/api/admin/users/{user}/expiry</div>
+        <div><span class="tc-pill tc-pill-success" style="font-family:inherit">GET</span>&nbsp;&nbsp;&nbsp;/api/latest <span style="color:var(--tc-ink-3);font-family:inherit">(公开)</span></div>
+        <div><span class="tc-pill tc-pill-warning" style="font-family:inherit">PATCH</span>&nbsp;/api/admin/users/{user}/status</div>
+        <div></div>
+        <div><span class="tc-pill tc-pill-warning" style="font-family:inherit">POST</span>&nbsp;&nbsp;/api/admin/users/{user}/password</div>
+        <div></div>
+        <div><span class="tc-pill tc-pill-danger" style="font-family:inherit">DEL</span>&nbsp;&nbsp;&nbsp;/api/admin/users/{user}</div>
+        <div></div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+{% endblock %}

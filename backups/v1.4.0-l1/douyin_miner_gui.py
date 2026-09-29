@@ -253,110 +253,9 @@ class App(ctk.CTk):
         self.update_dismissed: bool = False      # 用户在登录页点了"稍后"
         self._update_dialog: ctk.CTkToplevel | None = None
 
-        # === L2 桌面级：托盘 + 通知 + 关闭拦截 ===
-        from desktop import prefs
-        self._prefs = prefs.load()
-        self._tray = None        # SystemTray 实例（启动后赋值）
-        self._notifier = None    # Notifier 实例
-        # 拦截窗口关闭按钮：× → 最小化到托盘（除非 prefs 关了）
-        self.protocol("WM_DELETE_WINDOW", self._on_close)
-        # === L2 END ===
-
         # 启动：先校验已存的 token，再决定显示登录页还是主界面
         self._boot()
         self.after(100, self.poll)
-
-    # ================= L2 桌面级：托盘 + 通知 + 关闭拦截 =================
-    def _init_desktop(self):
-        """在登录成功 / 主界面建立后初始化托盘和通知器。"""
-        if self._tray is not None:
-            return
-        try:
-            from desktop.system_tray import SystemTray
-            from desktop.notifier import Notifier
-            self._notifier = Notifier(self._prefs)
-            self._tray = SystemTray(
-                app=self,
-                on_show=self._tray_show_window,
-                on_hide=self._tray_hide_window,
-                on_quit=self._real_quit,
-                on_start_crawl=self._tray_start_crawl,
-                on_stop_crawl=self._tray_stop_crawl,
-            )
-            self._tray.start()
-            # 通知器 hit 节流：每次开始抓取时重置
-            self._tray.set_tooltip(f"{APP_TITLE} · 已就绪")
-        except Exception as e:
-            print(f"[L2] 托盘初始化失败（不影响主程序）: {e}")
-
-    def _on_close(self):
-        """窗口 × 按钮：默认最小化到托盘（除非用户关闭了开关）。"""
-        if self._tray is None or not self._prefs.get("tray_minimize", True):
-            # 没托盘 OR 用户关了开关 → 真正退出
-            self._real_quit()
-            return
-        # 隐藏到托盘
-        self._tray_hide_window()
-        # 首次提示
-        if not self._prefs.get("tray_first_hide_tip_shown", False):
-            self._prefs["tray_first_hide_tip_shown"] = True
-            from desktop import prefs as _prefs_mod
-            _prefs_mod.save(self._prefs)
-            self._notifier and self._notifier.notify(
-                "hit",  # 用 hit 通道，只是个提示用现有开关
-                title="已最小化到托盘",
-                body="右键托盘图标可恢复窗口或退出程序",
-            )
-
-    def _tray_show_window(self):
-        """托盘菜单『显示主窗口』：取消最小化 + 置顶 + 聚焦。"""
-        try:
-            self.after(0, self.deiconify)
-            self.after(0, lambda: (self.lift(), self.focus_force()))
-        except Exception:
-            pass
-
-    def _tray_hide_window(self):
-        """隐藏到托盘（不退出进程）。"""
-        try:
-            self.withdraw()
-        except Exception:
-            pass
-
-    def _tray_start_crawl(self):
-        """托盘菜单『开始抓取』：直接调 on_run。"""
-        if not self.logged_in:
-            return
-        try:
-            self.on_run()
-        except Exception as e:
-            print(f"[L2] tray start_crawl: {e}")
-
-    def _tray_stop_crawl(self):
-        """托盘菜单『停止抓取』。"""
-        try:
-            self.on_stop()
-        except Exception as e:
-            print(f"[L2] tray stop_crawl: {e}")
-
-    def _real_quit(self):
-        """真正退出：停托盘、停 worker、销毁窗口。"""
-        try:
-            if self._tray:
-                self._tray.stop()
-        except Exception:
-            pass
-        try:
-            self.stop_event.set()
-        except Exception:
-            pass
-        try:
-            self.quit()
-            self.destroy()
-        except Exception:
-            pass
-
-    # ================= L2 END =================
 
     # ================= 启动 / 授权 =================
     def _boot(self):
@@ -695,8 +594,6 @@ class App(ctk.CTk):
         # 登录成功：重建主界面
         self._build()
         self.after(100, self._heartbeat_loop)
-        # L2：登录成功后才挂托盘（登录页不需要托盘）
-        self.after(50, self._init_desktop)
 
     def _heartbeat_loop(self):
         """每 30 分钟调一次 /verify，账号被改期/停用/被踢时立刻锁界面。"""
@@ -720,10 +617,6 @@ class App(ctk.CTk):
         if self.busy:
             extra += "\n当前抓取已暂停，结果已保存到文件。"
         _msg("warn", "账号已失效", f"{msg}{extra}\n请重新登录。")
-        # L2：系统通知（被踢 / 失效双通道）
-        if self._notifier:
-            self._notifier.notify("kicked", title="账号已失效",
-                                  body=f"{msg}{extra}")
         self._show_login(f"{msg}{extra}")
 
     # ================= 自动升级 =================
@@ -743,13 +636,6 @@ class App(ctk.CTk):
         # 实际禁用与否由 /api/login 返回的 426 + 客户端 catch 处理。
 
         if has_update and not self.update_dismissed:
-            # L2：发一条系统通知（窗口不在前台时尤其有用）
-            if self._notifier:
-                latest = info.get("version", "新版本")
-                self._notifier.notify(
-                    "update", title=f"听潮 v{latest} 已发布",
-                    body="点击主窗口中的升级提示查看更新内容"
-                )
             # 启动时立刻弹窗（升级时机）
             self._show_update_dialog()
 
@@ -1030,8 +916,6 @@ class App(ctk.CTk):
         self._grp(self.side, "帮助")
         self._nav(self.side, "help", "❓  使用说明",
                   lambda: self._show("help"))
-        self._nav(self.side, "settings", "⚙  设置",
-                  lambda: self._show("settings"))
 
         # side-promo（剩余天数）
         promo = ctk.CTkFrame(self.side, fg_color=CARD, corner_radius=12,
@@ -1065,7 +949,7 @@ class App(ctk.CTk):
                      text_color=INK3, font=ctk.CTkFont(size=11)).pack(
             anchor="w", padx=14, pady=(8, 14))
 
-        ctk.CTkLabel(self.side, text="v1.5 · 合智云数",
+        ctk.CTkLabel(self.side, text="v1.4 · 合智云数",
                      text_color=INK3, font=ctk.CTkFont(size=10)).pack(side="bottom", pady=12)
 
         # =================== 主区（侧栏右） ===================
@@ -1120,7 +1004,6 @@ class App(ctk.CTk):
         self._build_monitor(self.page)
         self._build_account(self.page)
         self._build_help(self.page)
-        self._build_settings(self.page)
         self._show("monitor")
 
     def _grp(self, parent, text):
@@ -1141,10 +1024,9 @@ class App(ctk.CTk):
     def _show(self, which):
         # 更新面包屑
         crumb_map = {
-            "monitor":  "采集 / 评论监控",
-            "account":  "账号 / 抖音账号",
-            "help":     "帮助 / 使用说明",
-            "settings": "帮助 / 设置",
+            "monitor": "采集 / 评论监控",
+            "account": "账号 / 抖音账号",
+            "help": "帮助 / 使用说明",
         }
         try:
             self._crumb.configure(text=crumb_map.get(which, ""))
@@ -1511,13 +1393,6 @@ class App(ctk.CTk):
         vals = [str(self._rowcount), _trunc(r["视频ID"], 12), _trunc(r["昵称"], 12),
                 _trunc(r["评论内容"], 40), _trunc(r.get("评论时间", ""), 16), "打开", "私信"]
         self._mk_row(rf, vals, url=r["主页链接"])
-        # L2：命中系统通知（节流：累计前 5 条逐条发，之后不发）
-        if self._notifier:
-            kw = r.get("关键词", "")
-            who = r.get("昵称", "")
-            text = r.get("评论内容", "")[:30]
-            body = f"「{kw}」 · {who}: {text}" if kw else f"{who}: {text}"
-            self._notifier.notify_hit_throttled(title="命中关键词", body=body)
         try:
             self.tbody._parent_canvas.yview_moveto(1.0)
         except Exception:
@@ -1559,11 +1434,6 @@ class App(ctk.CTk):
             self._live_txt.configure(text=text)
         except Exception:
             pass
-        # L2：托盘同步状态
-        if self._tray:
-            self._tray.set_busy(running)
-            if running:
-                self._tray.set_tooltip(f"{APP_TITLE} · 抓取中…")
 
     # ---------- 抖音账号页 ----------
     def _build_account(self, parent):
@@ -1686,163 +1556,6 @@ class App(ctk.CTk):
         box.pack(fill="both", expand=True, padx=24, pady=20)
         box.insert("1.0", txt)
         box.configure(state="disabled")
-
-    # ---------- 设置页（L2 桌面级） ----------
-    def _build_settings(self, parent):
-        """通知 + 行为 + 关于三个卡片。"""
-        from desktop import prefs, autostart
-
-        f = ctk.CTkFrame(parent, fg_color=BG)
-        self.frm_settings = f
-        f.grid_columnconfigure(0, weight=1)
-
-        # 顶部标题
-        head = ctk.CTkFrame(f, fg_color="transparent")
-        head.grid(row=0, column=0, sticky="ew", padx=24, pady=(20, 14))
-        ctk.CTkLabel(head, text="⚙  设置", text_color=INK,
-                     font=ctk.CTkFont(size=22, weight="bold")).pack(side="left")
-        ctk.CTkLabel(head, text="偏好自动保存 · 重启应用后生效",
-                     text_color=INK3, font=ctk.CTkFont(size=12)).pack(
-            side="left", padx=(12, 0))
-
-        # 内容滚动容器
-        body = ctk.CTkScrollableFrame(f, fg_color=BG)
-        body.grid(row=1, column=0, sticky="nsew", padx=24, pady=(0, 20))
-        f.grid_rowconfigure(1, weight=1)
-        body.grid_columnconfigure(0, weight=1)
-
-        # ---------- 卡片 1：通知 ----------
-        def _mk_card(parent, title, sub):
-            c = ctk.CTkFrame(parent, fg_color=CARD, corner_radius=12,
-                             border_width=1, border_color=LINE)
-            ctk.CTkLabel(c, text=title, text_color=INK,
-                         font=ctk.CTkFont(size=15, weight="bold")).pack(
-                anchor="w", padx=20, pady=(16, 2))
-            ctk.CTkLabel(c, text=sub, text_color=INK3,
-                         font=ctk.CTkFont(size=12)).pack(
-                anchor="w", padx=20, pady=(0, 8))
-            return c
-
-        card1 = _mk_card(body, "🔔  通知",
-                         "抓取命中 / 完成 / 账号异常 / 新版本时通过系统通知中心推送")
-        card1.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-
-        # 4 个通知开关
-        def _mk_switch_row(parent, label, pref_key):
-            row = ctk.CTkFrame(parent, fg_color="transparent")
-            row.pack(fill="x", padx=20, pady=8)
-            ctk.CTkLabel(row, text=label, text_color=INK2,
-                         font=ctk.CTkFont(size=13)).pack(side="left")
-            sw = ctk.CTkSwitch(
-                row, text="", width=46, height=24,
-                progress_color=BRAND, button_color=BRAND_INK,
-                fg_color=SURFACE2, button_hover_color=BRAND,
-                border_width=0,
-                command=lambda: self._toggle_pref(pref_key, sw.get()),
-            )
-            sw.pack(side="right")
-            if self._prefs.get(pref_key, True):
-                sw.select()
-            return sw
-
-        _mk_switch_row(card1, "关键词命中提醒", "notify_hit")
-        _mk_switch_row(card1, "抓取完成汇总",   "notify_done")
-        _mk_switch_row(card1, "账号被踢下线",   "notify_kicked")
-        _mk_switch_row(card1, "新版本发布",     "notify_update")
-
-        # ---------- 卡片 2：行为 ----------
-        card2 = _mk_card(body, "🎯  行为",
-                         "关闭按钮 + 开机自启")
-        card2.grid(row=1, column=0, sticky="ew", pady=(0, 12))
-
-        # 关闭时最小化到托盘
-        row_min = ctk.CTkFrame(card2, fg_color="transparent")
-        row_min.pack(fill="x", padx=20, pady=8)
-        ctk.CTkLabel(row_min, text="点 × 时最小化到托盘（不退出）",
-                     text_color=INK2, font=ctk.CTkFont(size=13)).pack(side="left")
-        sw_min = ctk.CTkSwitch(
-            row_min, text="", width=46, height=24,
-            progress_color=BRAND, button_color=BRAND_INK,
-            fg_color=SURFACE2, button_hover_color=BRAND,
-            border_width=0,
-            command=lambda: self._toggle_pref("tray_minimize", sw_min.get()),
-        )
-        sw_min.pack(side="right")
-        if self._prefs.get("tray_minimize", True):
-            sw_min.select()
-
-        # 开机自启
-        row_auto = ctk.CTkFrame(card2, fg_color="transparent")
-        row_auto.pack(fill="x", padx=20, pady=8)
-        ctk.CTkLabel(row_auto, text="开机自动启动（登录后默认隐藏窗口）",
-                     text_color=INK2, font=ctk.CTkFont(size=13)).pack(side="left")
-        sw_auto = ctk.CTkSwitch(
-            row_auto, text="", width=46, height=24,
-            progress_color=BRAND, button_color=BRAND_INK,
-            fg_color=SURFACE2, button_hover_color=BRAND,
-            border_width=0,
-            command=lambda: self._toggle_autostart(sw_auto.get()),
-        )
-        sw_auto.pack(side="right")
-        # 与 OS 真实状态对齐
-        try:
-            if autostart.is_enabled():
-                sw_auto.select()
-        except Exception:
-            pass
-
-        # ---------- 卡片 3：关于 ----------
-        card3 = _mk_card(body, "ℹ  关于", f"听潮 · 抖音评论名单挖掘")
-        card3.grid(row=2, column=0, sticky="ew")
-        # 版本号
-        try:
-            from license import __version__
-            ver = __version__
-        except Exception:
-            ver = "unknown"
-        info_row = ctk.CTkFrame(card3, fg_color="transparent")
-        info_row.pack(fill="x", padx=20, pady=(0, 16))
-        ctk.CTkLabel(info_row, text=f"当前版本：v{ver}",
-                     text_color=INK2, font=ctk.CTkFont(size=13)).pack(side="left")
-        ctk.CTkButton(
-            info_row, text="检查更新", height=32, corner_radius=9,
-            fg_color=CARD, hover_color=SURFACE2, text_color=INK2,
-            border_width=1, border_color=LINE2,
-            font=ctk.CTkFont(size=12),
-            command=self._check_update_startup,
-        ).pack(side="right")
-        # 二维码/链接占位
-        ctk.CTkLabel(card3, text="潮声之下，皆是商机 · TideSignal",
-                     text_color=INK3, font=ctk.CTkFont(size=11)).pack(
-            anchor="w", padx=20, pady=(0, 16))
-
-    def _toggle_pref(self, key: str, value: bool):
-        """开关切换：写 prefs.json，立即生效。"""
-        from desktop import prefs
-        self._prefs[key] = bool(value)
-        prefs.save(self._prefs)
-        # notifier 引用了 prefs，重新读一次让它下次发通知时用新值
-        if self._notifier:
-            self._notifier.prefs = self._prefs
-
-    def _toggle_autostart(self, value: bool):
-        """开机自启开关：写 prefs + OS 注册项双写。"""
-        from desktop import autostart
-        ok = False
-        try:
-            if value:
-                ok = autostart.enable()
-            else:
-                ok = autostart.disable()
-        except Exception as e:
-            ok = False
-            print(f"[autostart] toggle 失败: {e}")
-        # 同步 prefs（即使 OS 失败，prefs 也记下用户意图）
-        self._toggle_pref("autostart", bool(value))
-        # 反馈
-        if not ok:
-            _msg("warn", "开机自启设置失败",
-                 "可能是权限不足（macOS 需要「系统设置-通用-登录项」允许；Windows 需要当前用户写权限）")
 
     # ---------- 线程安全 UI ----------
     def set_status(self, m, color="#e0663b"):
@@ -2003,33 +1716,15 @@ class App(ctk.CTk):
     def _finish(self, val):
         rows, csv_path, xlsx_path, count = val
         self._set_busy(False)
-        # L2：托盘切回 idle
-        if self._tray:
-            self._tray.set_busy(False)
-            self._tray.set_tooltip(f"{APP_TITLE} · 已就绪")
         if count < 0:
             self.set_status("● 出错，见提示", "#dc2626")
-            if self._notifier:
-                self._notifier.notify("done", title="抓取出错",
-                                      body="运行过程中发生异常，请在主窗口查看详情")
             return
         if count == 0:
             self.set_status("● 完成：没有命中，换关键词或确认链接能打开评论", "#e0663b")
-            if self._notifier:
-                self._notifier.notify("done", title="抓取完成",
-                                      body="本次没有命中关键词")
-            self._notifier and self._notifier.reset_hit_counter()
             return
         self.last_file = xlsx_path or csv_path
         self.b_open.configure(state="normal")
         self.set_status(f"● 完成：{count} 条命中，已导出，点「打开表格」查看", TEAL)
-        # L2：抓取完成通知（命中汇总）
-        if self._notifier:
-            # 如果累计 > 5 条命中，先发汇总
-            self._notifier.flush_hit_summary(count)
-            self._notifier.notify("done", title=f"抓取完成 · {count} 条命中",
-                                  body=f"文件已保存到 {self.last_file}")
-            self._notifier.reset_hit_counter()
 
     def on_open(self):
         if self.last_file and os.path.exists(self.last_file):
@@ -2039,15 +1734,7 @@ class App(ctk.CTk):
 
 
 def main():
-    import sys as _sys
-    app = App()
-    # L2：开机自启模式下默认隐藏窗口（让 OS 启动时不闪窗）
-    if "--autostart" in _sys.argv:
-        try:
-            app.withdraw()
-        except Exception:
-            pass
-    app.mainloop()
+    App().mainloop()
 
 
 if __name__ == "__main__":

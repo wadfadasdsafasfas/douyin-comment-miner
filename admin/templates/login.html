@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>登录 · 听潮 · 控制台</title>
+<link rel="stylesheet" href="/admin/static/tokens.css">
+<link rel="stylesheet" href="/admin/static/tingchao-ui.css">
+<link rel="icon" href="/admin/static/logo/favicon.svg">
+</head>
+<body>
+
+<div class="tc-app">
+<div class="tc-login" style="height:560px">
+
+  <!-- 左侧品牌栏 -->
+  <div class="tc-login-brand">
+    <span class="tc-logo">
+      <img src="/admin/static/logo/logo-white.svg" width="36" height="36" alt="听潮">
+    </span>
+    <div class="tc-login-wordmark">听潮</div>
+    <div class="tc-login-en">TIDE SIGNAL</div>
+    <div class="tc-login-slogan">潮声之下，皆是<em>商机</em></div>
+
+    <div class="tc-login-feats">
+      <div class="tc-login-feat">
+        <span class="tc-icon-box"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-comment"/></svg></span>
+        抖音 / 小红书评论实时抓取，关键词秒级命中
+      </div>
+      <div class="tc-login-feat">
+        <span class="tc-icon-box"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-user"/></svg></span>
+        自动去重成名单，主页 / 私信一键触达
+      </div>
+      <div class="tc-login-feat">
+        <span class="tc-icon-box"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-trend"/></svg></span>
+        采集趋势与命中构成，全程可视化
+      </div>
+    </div>
+  </div>
+
+  <!-- 右侧登录表单 -->
+  <div class="tc-login-form">
+    <div class="tc-login-card">
+      <span class="tc-server-chip"><span class="tc-dot"></span>授权服务器 {{ backend }} · 在线</span>
+
+      {% if msg %}
+        {% if ok %}
+          <div class="tc-toast tc-toast-success" style="margin-bottom:14px;position:relative;right:auto;top:auto">✓ {{ msg }}</div>
+        {% else %}
+          <div class="tc-toast tc-toast-danger" style="margin-bottom:14px;position:relative;right:auto;top:auto">⚠ {{ msg }}</div>
+        {% endif %}
+      {% endif %}
+
+      <div class="tc-login-hello">欢迎回来</div>
+      <div class="tc-login-tip">登录后进入听潮用户管理工作台</div>
+
+      <form method="post" action="/admin/login">
+        <div class="tc-field" style="margin-bottom:14px">
+          <label class="tc-label">账号</label>
+          <input class="tc-input tc-input-lg" name="username" value="admin" autocomplete="username" required autofocus>
+        </div>
+        <div class="tc-field">
+          <label class="tc-label">密码</label>
+          <div class="tc-input-wrap">
+            <input class="tc-input tc-input-lg" name="password" type="password" autocomplete="current-password" required>
+            <button type="button" class="tc-input-affix" onclick="togglePw(this)" title="显示密码">
+              <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-eye"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <button class="tc-btn tc-btn-primary tc-btn-block" style="height:52px;margin-top:10px;font-size:16px">登 录</button>
+      </form>
+
+      <div class="tc-login-foot">忘记密码？<span class="tc-link">联系销售重置</span></div>
+    </div>
+  </div>
+
+</div>
+</div>
+
+<script>
+function togglePw(btn){
+  const inp = btn.parentElement.querySelector('input');
+  inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+</script>
+</body>
+</html>

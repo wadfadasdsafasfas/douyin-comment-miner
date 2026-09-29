@@ -2,3 +2,7 @@ playwright>=1.40
 openpyxl>=3.1
 customtkinter>=5.2
 requests>=2.31
+
+# L2 桌面级（系统托盘 + 原生通知 + App 图标）
+pystray>=0.19.5
+Pillow>=10.0

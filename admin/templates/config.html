@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% block title %}版本与升级 · 听潮 · 控制台{% endblock %}
+{% block crumb %}管理 / <b>版本与升级</b>{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div>
+    <div class="tc-page-title">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-refresh"/></svg>
+      版本与升级
+    </div>
+    <div style="font-size:13px;color:var(--tc-ink-3);margin-top:6px">客户端启动时会拉取这些字段判断是否提示升级</div>
+  </div>
+</div>
+
+{% if msg %}
+  {% if ok %}
+    <div class="tc-batchbar" style="margin-bottom:18px"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-check"/></svg> 配置已保存，客户端下次启动即可看到</div>
+  {% else %}
+    <div class="tc-batchbar" style="background:var(--tc-danger-bg);border-color:#F6C6C6;color:var(--tc-danger)"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-alert"/></svg> 保存失败：{{ msg }}</div>
+  {% endif %}
+{% endif %}
+
+<!-- 当前状态卡 -->
+<div class="tc-card" style="margin-bottom:18px">
+  <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line);display:flex;justify-content:space-between;align-items:center">
+    <div>
+      <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+        <svg class="tc-icon" style="color:var(--tc-brand)"><use href="/admin/static/icons/sprite.svg#tc-check-square"/></svg>
+        当前生效
+      </h3>
+      <p style="font-size:12.5px;color:var(--tc-ink-3);margin-top:3px">客户端下次启动会检测这些值</p>
+    </div>
+    <span class="tc-pill tc-pill-success"><span class="tc-dot"></span>已发布 v{{ cfg.latest_version or '1.0.0' }}</span>
+  </div>
+  <div class="tc-card-pad">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+      <div class="tc-field">
+        <label class="tc-label">最新版本</label>
+        <input class="tc-input" type="text" value="v{{ cfg.latest_version or '1.0.0' }}" readonly>
+        <div style="font-size:11.5px;color:var(--tc-ink-3);margin-top:5px">客户端启动时会看到「升级到 v{{ cfg.latest_version }}」提示</div>
+      </div>
+      <div class="tc-field">
+        <label class="tc-label">最低允许版本</label>
+        <input class="tc-input" type="text" value="v{{ cfg.min_version or '0.0.0' }}" readonly>
+        <div style="font-size:11.5px;color:var(--tc-ink-3);margin-top:5px">低于此版本的客户端会被拒绝登录</div>
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+      <div class="tc-field">
+        <label class="tc-label">强制升级</label>
+        <div style="height:46px;display:flex;align-items:center">
+          {% if cfg.force_update == 'true' %}
+            <span class="tc-pill tc-pill-danger"><span class="tc-dot"></span>已开启</span>
+          {% else %}
+            <span class="tc-pill tc-pill-neutral"><span class="tc-dot"></span>关闭（建议）</span>
+          {% endif %}
+        </div>
+        <div style="font-size:11.5px;color:var(--tc-ink-3);margin-top:5px">开启后低于最低版本的客户端无法登录</div>
+      </div>
+      <div class="tc-field">
+        <label class="tc-label">更新说明</label>
+        <textarea class="tc-textarea" readonly rows="2" style="min-height:46px">{{ cfg.release_notes or '（无）' }}</textarea>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 编辑表单 -->
+<div class="tc-card" style="margin-bottom:18px">
+  <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line)">
+    <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+      <svg class="tc-icon" style="color:var(--tc-violet)"><use href="/admin/static/icons/sprite.svg#tc-settings"/></svg>
+      修改配置
+    </h3>
+    <p style="font-size:12.5px;color:var(--tc-ink-3);margin-top:3px">保存后立即生效，下次启动即可拉到</p>
+  </div>
+  <form method="post" action="/admin/config">
+    <div class="tc-card-pad">
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+        <div class="tc-field">
+          <label class="tc-label">最新版本号 *</label>
+          <input class="tc-input" type="text" name="latest_version" value="{{ cfg.latest_version or '1.0.0' }}" required>
+          <div style="font-size:11.5px;color:var(--tc-ink-3);margin-top:5px">客户端启动时检测到这个就提示</div>
+        </div>
+        <div class="tc-field">
+          <label class="tc-label">最低允许版本 *</label>
+          <input class="tc-input" type="text" name="min_version" value="{{ cfg.min_version or '0.0.0' }}" required>
+          <div style="font-size:11.5px;color:var(--tc-ink-3);margin-top:5px">低于这个版本会被拒绝登录</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+        <div class="tc-field">
+          <label class="tc-label">Windows zip 下载链接</label>
+          <input class="tc-input" type="text" name="windows_url" value="{{ cfg.windows_url or '' }}" placeholder="https://...">
+          <div style="font-size:11.5px;color:var(--tc-ink-3);margin-top:5px">通常由 GitHub Actions 自动写入</div>
+        </div>
+        <div class="tc-field">
+          <label class="tc-label">macOS zip 下载链接</label>
+          <input class="tc-input" type="text" name="macos_url" value="{{ cfg.macos_url or '' }}" placeholder="https://...">
+        </div>
+      </div>
+
+      <div class="tc-field" style="margin-top:14px">
+        <label class="tc-label">更新说明（显示在客户端弹窗里）</label>
+        <textarea class="tc-textarea" name="release_notes" rows="4" placeholder="例如：&#10;• 新增多平台支持&#10;• 修复升级后无法登录的 bug&#10;• 性能优化">{{ cfg.release_notes or '' }}</textarea>
+      </div>
+
+      <div class="tc-field" style="margin-top:14px">
+        <label class="tc-check {% if cfg.force_update == 'true' %}is-on{% endif %}" style="display:flex;align-items:center;gap:10px;cursor:pointer">
+          <input type="checkbox" name="force_update" value="true"
+                 {% if cfg.force_update == 'true' %}checked{% endif %}
+                 style="display:none"
+                 onchange="this.parentElement.classList.toggle('is-on',this.checked)">
+          <svg viewBox="0 0 16 16" fill="none"><path d="M3.5 8.5L6.5 11.5L12.5 5" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          <span style="font-size:13.5px;font-weight:600">强制升级（勾选后低于最低版本的客户端无法登录）</span>
+        </label>
+      </div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--tc-line);background:var(--tc-surface-2);display:flex;justify-content:flex-end;gap:9px">
+      <button type="reset" class="tc-btn tc-btn-ghost">重置</button>
+      <button type="submit" class="tc-btn tc-btn-primary">保存配置</button>
+    </div>
+  </form>
+</div>
+
+<!-- 当前客户端拉到的样子 -->
+<div class="tc-card">
+  <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line)">
+    <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+      <svg class="tc-icon" style="color:var(--tc-teal)"><use href="/admin/static/icons/sprite.svg#tc-globe"/></svg>
+      客户端视角
+    </h3>
+    <p style="font-size:12.5px;color:var(--tc-ink-3);margin-top:3px">GET <code style="font-family:ui-monospace,Menlo,monospace;background:var(--tc-surface-2);padding:1px 6px;border-radius:5px;color:var(--tc-violet)">/api/latest</code> 当前返回</p>
+  </div>
+  <div class="tc-card-pad">
+<pre style="background:var(--tc-surface-2);border:1px solid var(--tc-line);border-radius:10px;padding:16px;font-size:12.5px;line-height:1.75;color:var(--tc-ink);overflow:auto;font-family:ui-monospace,Menlo,monospace;margin:0">{
+  "version": "{{ cfg.latest_version or '1.0.0' }}",
+  "min_version": "{{ cfg.min_version or '0.0.0' }}",
+  "force_update": {{ 'true' if cfg.force_update == 'true' else 'false' }},
+  "release_notes": "{{ (cfg.release_notes or '')[:80] }}{% if cfg.release_notes and cfg.release_notes|length > 80 %}…{% endif %}",
+  "downloads": {
+    "windows": "{{ cfg.windows_url or '' }}",
+    "macos":   "{{ cfg.macos_url or '' }}"
+  }
+}</pre>
+  </div>
+</div>
+
+{% endblock %}

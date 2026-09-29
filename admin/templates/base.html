@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>{% block title %}听潮 · 控制台{% endblock %}</title>
+<link rel="stylesheet" href="/admin/static/tokens.css">
+<link rel="stylesheet" href="/admin/static/tingchao-ui.css">
+<link rel="icon" href="/admin/static/logo/favicon.svg">
+</head>
+<body>
+
+<div class="tc-app">
+<div class="tc-shell">
+
+  <!-- 侧栏 -->
+  <aside class="tc-sidebar">
+
+    <div class="tc-brand">
+      <span class="tc-logo">
+        <img src="/admin/static/logo/logo-mark.svg" width="36" height="36" alt="听潮">
+      </span>
+      <div class="tc-brand-name">
+        听潮
+        <small>TIDE SIGNAL</small>
+      </div>
+    </div>
+
+    <div class="tc-slogan">潮声之下，皆是商机</div>
+
+    <div class="tc-nav-group">概览</div>
+    <a class="tc-nav-item {% if active_nav=='dashboard' %}is-active{% endif %}" href="/admin/dashboard">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-chart"/></svg>
+      <span>仪表盘</span>
+    </a>
+
+    <div class="tc-nav-group">管理</div>
+    <a class="tc-nav-item {% if active_nav=='users' %}is-active{% endif %}" href="/admin/users">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-user"/></svg>
+      <span>用户管理</span>
+    </a>
+    <a class="tc-nav-item {% if active_nav=='config' %}is-active{% endif %}" href="/admin/config">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-refresh"/></svg>
+      <span>版本与升级</span>
+    </a>
+
+    <div class="tc-nav-group">系统</div>
+    <a class="tc-nav-item {% if active_nav=='help' %}is-active{% endif %}" href="/admin/help">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-help"/></svg>
+      <span>使用说明</span>
+    </a>
+
+    <div style="flex:1"></div>
+
+    <div class="tc-quota">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+        <span style="font-size:11px;font-weight:700;color:var(--tc-ink-3);letter-spacing:.08em;text-transform:uppercase">后端服务</span>
+        <span class="tc-pill tc-pill-success"><span class="tc-dot"></span>在线</span>
+      </div>
+      <div class="tc-progress" style="margin-bottom:6px"><i style="width:88%"></i></div>
+      <div style="font-size:11px;color:var(--tc-ink-3);font-family:ui-monospace,Menlo,monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">{{ backend }}</div>
+    </div>
+
+  </aside>
+
+  <!-- 主区 -->
+  <main class="tc-main">
+
+    <div class="tc-topbar">
+      <div class="tc-crumb">{% block crumb %}控制台{% endblock %}</div>
+      <div style="display:flex;align-items:center;gap:14px">
+        <span class="tc-live">
+          <span class="tc-pulse"></span>
+          <span>管理会话</span>
+        </span>
+        <div style="display:flex;align-items:center;gap:8px;padding:6px 10px 6px 6px;background:var(--tc-surface-2);border:1px solid var(--tc-line);border-radius:10px">
+          <div style="width:28px;height:28px;border-radius:50%;background:var(--tc-grad);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700">A</div>
+          <span style="font-size:13px;font-weight:600">admin</span>
+        </div>
+        <form action="/admin/logout" method="post" style="display:inline">
+          <button type="submit" class="tc-btn tc-btn-ghost tc-btn-sm">
+            <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-external"/></svg>
+            退出
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <div class="tc-content">
+      {% block content %}{% endblock %}
+    </div>
+  </main>
+
+</div>
+</div>
+
+{% block toasts %}
+{% if request.query_params.get('ok') == '1' %}
+<div class="tc-toasts">
+  <div class="tc-toast tc-toast-success"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-check"/></svg> 操作成功</div>
+</div>
+{% elif request.query_params.get('ok') == '0' %}
+<div class="tc-toasts">
+  <div class="tc-toast tc-toast-danger"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-alert"/></svg> 操作失败，请重试</div>
+</div>
+{% endif %}
+{% endblock %}
+
+<script>
+// 2.2s 后自动消失 toast
+setTimeout(()=>{document.querySelectorAll('.tc-toasts .tc-toast').forEach(t=>{
+  t.style.opacity='0'; t.style.transform='translateY(-10px)';
+  setTimeout(()=>t.remove(),200);
+})}, 2200);
+
+// modal 切换
+function openModal(id){document.getElementById(id)?.classList.add('show')}
+function closeModal(id){document.getElementById(id)?.classList.remove('show')}
+document.addEventListener('click',e=>{
+  if(e.target.classList?.contains('tc-overlay')){
+    e.target.classList.remove('show');
+  }
+});
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){document.querySelectorAll('.tc-overlay.show').forEach(m=>m.classList.remove('show'))}
+});
+
+// 改到期 / 改密码 / 启停 / 删除 — 弹出对应 modal
+function actExpiry(username, currentDate){
+  const m = document.getElementById('m-expiry');
+  m.querySelector('[name=username]').value = username;
+  m.querySelector('.m-title').textContent = `改到期 — ${username}`;
+  m.querySelector('[name=new_expires]').value = currentDate || '';
+  openModal('m-expiry');
+}
+function actPassword(username){
+  const m = document.getElementById('m-password');
+  m.querySelector('[name=username]').value = username;
+  m.querySelector('.m-title').textContent = `改密码 — ${username}`;
+  m.querySelector('[name=new_password]').value = '';
+  openModal('m-password');
+}
+function actStatus(username){
+  const m = document.getElementById('m-status');
+  m.querySelector('[name=username]').value = username;
+  m.querySelector('.m-title').textContent = `切换状态 — ${username}`;
+  openModal('m-status');
+}
+function actDelete(username){
+  if(!confirm(`确定删除用户 ${username}？此操作不可撤销。`)) return;
+  const f = document.createElement('form');
+  f.method = 'POST';
+  f.action = `/admin/users/${username}/delete`;
+  document.body.appendChild(f); f.submit();
+}
+
+// 快捷到期日 select：自动写入日期 input
+document.querySelectorAll('[data-quick-expiry]').forEach(sel=>{
+  sel.addEventListener('change',()=>{
+    if(sel.value) sel.form.querySelector('[name=new_expires]').value = sel.value;
+  });
+});
+
+// 搜索过滤（用户管理页）
+const searchInput = document.getElementById('user-search');
+if(searchInput){
+  searchInput.addEventListener('input',e=>{
+    const q = e.target.value.trim().toLowerCase();
+    document.querySelectorAll('tbody tr.user-row').forEach(tr=>{
+      const text = tr.dataset.search || '';
+      tr.style.display = (q==='' || text.includes(q)) ? '' : 'none';
+    });
+    const el = document.getElementById('visible-count');
+    if(el){
+      const n = document.querySelectorAll('tbody tr.user-row:not([style*="display: none"])').length;
+      el.textContent = n;
+    }
+  });
+}
+</script>
+</body>
+</html>

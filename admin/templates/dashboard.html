@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+{% block title %}仪表盘 · 听潮 · 控制台{% endblock %}
+{% block crumb %}概览 / <b>仪表盘</b>{% endblock %}
+
+{% block content %}
+
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div>
+    <div class="tc-page-title">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-chart"/></svg>
+      仪表盘
+    </div>
+    <div style="font-size:13px;color:var(--tc-ink-3);margin-top:6px">授权用户概览 · 今日更新</div>
+  </div>
+  <div style="display:flex;gap:9px">
+    <a href="/admin/users" class="tc-btn tc-btn-ghost">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-user"/></svg>
+      管理用户
+    </a>
+    <a href="/admin/config" class="tc-btn tc-btn-primary">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-refresh"/></svg>
+      版本配置
+    </a>
+  </div>
+</div>
+
+<!-- KPI 4 卡片 -->
+<div class="tc-kpi-grid" style="margin-bottom:18px">
+  <div class="tc-kpi">
+    <div class="tc-kpi-label">用户总数</div>
+    <div class="tc-kpi-value tc-num">{{ kpi_total }}</div>
+    <div class="tc-kpi-sub">含管理员 / 已停用</div>
+  </div>
+  <div class="tc-kpi">
+    <div class="tc-kpi-label">活跃授权</div>
+    <div class="tc-kpi-value tc-num is-brand">{{ kpi_active }}</div>
+    <div class="tc-kpi-sub">未到期 · 未停用</div>
+  </div>
+  <div class="tc-kpi">
+    <div class="tc-kpi-label">30 天内到期</div>
+    <div class="tc-kpi-value tc-num" style="color:var(--tc-warning)">{{ kpi_expiring }}</div>
+    <div class="tc-kpi-sub">需尽快续期</div>
+  </div>
+  <div class="tc-kpi">
+    <div class="tc-kpi-label">已停用</div>
+    <div class="tc-kpi-value tc-num" style="color:var(--tc-ink-3)">{{ kpi_disabled }}</div>
+    <div class="tc-kpi-sub">暂停授权</div>
+  </div>
+</div>
+
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+
+  <!-- 左：即将到期 -->
+  <div class="tc-card">
+    <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+          <svg class="tc-icon" style="color:var(--tc-amber)"><use href="/admin/static/icons/sprite.svg#tc-calendar"/></svg>
+          即将到期（60 天内）
+        </h3>
+        <p style="font-size:12.5px;color:var(--tc-ink-3);margin-top:3px">按到期日升序，取前 5 位</p>
+      </div>
+      <a class="tc-btn tc-btn-ghost tc-btn-sm" href="/admin/users">全部 →</a>
+    </div>
+    {% if expiring_list %}
+    <div class="tc-table-wrap" style="border:none;border-radius:0">
+      <table class="tc-table">
+        <thead><tr><th>用户名</th><th>到期日</th><th>剩余</th><th style="text-align:right">状态</th></tr></thead>
+        <tbody>
+          {% for u in expiring_list %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="tc-avatar tc-avatar-sm" style="background:var(--tc-violet-soft);color:var(--tc-violet)">{{ u.username[0]|upper }}</div>
+                <span style="font-weight:600">{{ u.username }}</span>
+              </div>
+            </td>
+            <td class="tc-num">{{ u.expires_at[:10] }}</td>
+            <td class="tc-num">
+              {% if u.days_left <= 7 %}
+                <span class="tc-pill tc-pill-danger"><span class="tc-dot"></span>{{ u.days_left }} 天</span>
+              {% else %}
+                <span class="tc-pill tc-pill-warning"><span class="tc-dot"></span>{{ u.days_left }} 天</span>
+              {% endif %}
+            </td>
+            <td style="text-align:right">
+              <span class="tc-pill tc-pill-warning"><span class="tc-dot"></span>即将到期</span>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="tc-empty">✓ 60 天内无即将到期用户</div>
+    {% endif %}
+  </div>
+
+  <!-- 右：最近创建 -->
+  <div class="tc-card">
+    <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line);display:flex;justify-content:space-between;align-items:center">
+      <div>
+        <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+          <svg class="tc-icon" style="color:var(--tc-violet)"><use href="/admin/static/icons/sprite.svg#tc-plus"/></svg>
+          最近创建
+        </h3>
+        <p style="font-size:12.5px;color:var(--tc-ink-3);margin-top:3px">按创建时间倒序，取前 5 位</p>
+      </div>
+    </div>
+    {% if recent_list %}
+    <div class="tc-table-wrap" style="border:none;border-radius:0">
+      <table class="tc-table">
+        <thead><tr><th>用户名</th><th>到期日</th><th>创建时间</th></tr></thead>
+        <tbody>
+          {% for u in recent_list %}
+          <tr>
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="tc-avatar tc-avatar-sm" style="background:var(--tc-brand-soft);color:var(--tc-brand-ink)">{{ u.username[0]|upper }}</div>
+                <span style="font-weight:600">{{ u.username }}</span>
+              </div>
+            </td>
+            <td class="tc-num">{{ u.expires_at[:10] }}</td>
+            <td class="tc-num is-muted">{{ u.created_at[:10] if u.created_at else '—' }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+      <div class="tc-empty">暂无用户</div>
+    {% endif %}
+  </div>
+</div>
+
+<!-- 底部统计行 -->
+<div class="tc-card" style="margin-top:18px">
+  <div style="padding:18px 20px;border-bottom:1px solid var(--tc-line)">
+    <h3 style="font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px">
+      <svg class="tc-icon" style="color:var(--tc-teal)"><use href="/admin/static/icons/sprite.svg#tc-trend"/></svg>
+      授权健康度
+    </h3>
+    <p style="font-size:12.5px;color:var(--tc-ink-3);margin-top:3px">按状态分布</p>
+  </div>
+  <div class="tc-card-pad">
+    {% set healthy_pct = (kpi_active * 100 // kpi_total) if kpi_total else 0 %}
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;color:var(--tc-ink-2);width:140px">活跃占比</div>
+      <div style="flex:1"><div class="tc-progress"><i style="width:{{ healthy_pct }}%"></i></div></div>
+      <div class="tc-num" style="font-size:13px;font-weight:700;width:60px;text-align:right">{{ healthy_pct }}%</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:14px">
+      <div style="font-size:13px;font-weight:600;color:var(--tc-ink-2);width:140px">到期风险</div>
+      <div style="flex:1"><div class="tc-progress"><i style="width:{{ (kpi_expiring * 100 // kpi_total) if kpi_total else 0 }}%;background:var(--tc-amber)"></i></div></div>
+      <div class="tc-num" style="font-size:13px;font-weight:700;width:60px;text-align:right">{{ kpi_expiring }}</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <div style="font-size:13px;font-weight:600;color:var(--tc-ink-2);width:140px">已停用</div>
+      <div style="flex:1"><div class="tc-progress"><i style="width:{{ (kpi_disabled * 100 // kpi_total) if kpi_total else 0 }}%;background:var(--tc-ink-3)"></i></div></div>
+      <div class="tc-num" style="font-size:13px;font-weight:700;width:60px;text-align:right">{{ kpi_disabled }}</div>
+    </div>
+  </div>
+</div>
+
+{% endblock %}

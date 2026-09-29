@@ -31,7 +31,14 @@ jobs:
         run: |
           python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
           python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ `
-            playwright openpyxl customtkinter pyinstaller requests
+            playwright openpyxl customtkinter pyinstaller requests `
+            pystray Pillow
+
+      - name: L2 资产生成（PNG / ICO / ICNS）
+        run: |
+          # CI runner 通常拿不到用户本地的切图包；优先用 tools/build_assets.py 默认路径
+          # （如果 runner 把切图包放在固定路径，可加 --src 覆盖）
+          python tools/build_assets.py
 
       - name: PyInstaller · onedir · windowed
         run: |
@@ -44,11 +51,16 @@ jobs:
             --collect-all openpyxl `
             --collect-all customtkinter `
             --collect-all requests `
+            --collect-all pystray `
+            --collect-all PIL `
             --hidden-import openpyxl `
             --hidden-import requests `
             --hidden-import license `
             --hidden-import server_url `
             --hidden-import updater `
+            --hidden-import pystray._win32 `
+            --add-data "desktop/assets;desktop/assets" `
+            --icon desktop/assets/app.ico `
             douyin_miner_gui.py
 
       # 如果目标电脑既没 Chrome 也没 Edge，把下面取消注释（产物会多 ~150MB）：
@@ -88,7 +100,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip -i https://mirrors.aliyun.com/pypi/simple/
           python -m pip install -i https://mirrors.aliyun.com/pypi/simple/ \
-            playwright openpyxl customtkinter pyinstaller requests
+            playwright openpyxl customtkinter pyinstaller requests \
+            pystray Pillow
+
+      - name: L2 资产生成（PNG / ICO / ICNS）
+        run: |
+          python tools/build_assets.py --src "/Users/runner/work/_temp/听潮-切图-多彩数据版/logo" || \
+          python tools/build_assets.py
 
       - name: PyInstaller · onedir · windowed
         run: |
@@ -101,12 +119,17 @@ jobs:
             --collect-all openpyxl \
             --collect-all customtkinter \
             --collect-all requests \
+            --collect-all pystray \
+            --collect-all PIL \
             --hidden-import openpyxl \
             --hidden-import requests \
             --hidden-import license \
             --hidden-import server_url \
             --hidden-import updater \
-            --osx-bundle-identifier com.wadfadasdsafasfas.douyinminer \
+            --hidden-import pystray._osx \
+            --add-data "desktop/assets:desktop/assets" \
+            --icon desktop/assets/app.icns \
+            --osx-bundle-identifier com.douyinminer.tidesignal \
             douyin_miner_gui.py
 
       # 同上：纯裸机没装 Chrome/Edge 时取消注释：

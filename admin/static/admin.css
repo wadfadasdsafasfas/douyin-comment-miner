@@ -1,0 +1,339 @@
+/* ============================================================
+   听潮 · 管理后台  自定义 UI（v2 — 全自定义布局）
+   ============================================================ */
+
+:root{
+  --bg:#F5F5FA;
+  --surface:#FFFFFF;
+  --surface-2:#F8F8FC;
+  --ink:#171A26;
+  --ink-2:#5A6072;
+  --ink-3:#9AA0B4;
+  --line:#EBEBF2;
+  --line-2:#DEDEE9;
+  --brand:#FF4D4D;
+  --brand-2:#FF8A5B;
+  --brand-ink:#DE3232;
+  --brand-soft:#FFEDEC;
+  --violet:#7C5CFF;
+  --violet-soft:#F0ECFF;
+  --teal:#0FB5A5;
+  --teal-soft:#E2F7F4;
+  --amber:#FFB020;
+  --amber-soft:#FFF4DC;
+  --grad:linear-gradient(135deg,#FF8A5B 0%,#FF3D4E 100%);
+  --grad-cool:linear-gradient(135deg,#7C5CFF 0%,#5B7CFF 100%);
+  --shadow-sm:0 1px 2px rgba(23,26,38,.05);
+  --shadow-md:0 8px 24px rgba(23,26,38,.08);
+  --shadow-lg:0 18px 44px rgba(23,26,38,.10);
+  --r-sm:10px;
+  --r-md:14px;
+  --r-lg:20px;
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{
+  font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  background:var(--bg);
+  color:var(--ink);
+  -webkit-font-smoothing:antialiased;
+  font-size:14px;
+}
+a{color:inherit;text-decoration:none}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:inherit;font-size:14px;color:var(--ink)}
+code,kbd{font-family:"SF Mono",Menlo,monospace;font-size:12.5px;background:var(--surface-2);
+  padding:1px 6px;border-radius:5px;border:1px solid var(--line)}
+
+
+/* ============================================================ 登录页 */
+.auth-shell{
+  min-height:100vh;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(ellipse at top left,#FFEDEC 0%,transparent 50%),
+             radial-gradient(ellipse at bottom right,#F0ECFF 0%,transparent 50%),
+             var(--bg);
+  padding:24px;
+}
+.auth-card{
+  width:100%;max-width:420px;background:var(--surface);
+  border-radius:var(--r-lg);box-shadow:var(--shadow-lg);
+  padding:36px 32px 28px;border:1px solid var(--line);
+}
+.auth-card .logo-row{display:flex;align-items:center;gap:12px;margin-bottom:24px}
+.auth-card .logo{
+  width:48px;height:48px;border-radius:14px;
+  background:var(--grad);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:24px;
+}
+.auth-card .logo-text b{font-size:17px;font-weight:700;display:block;line-height:1.15}
+.auth-card .logo-text small{
+  display:block;font-size:10.5px;font-weight:600;color:var(--ink-3);
+  letter-spacing:.14em;margin-top:3px;
+}
+.auth-card h1{font-size:22px;font-weight:700;letter-spacing:-.01em;margin-bottom:6px}
+.auth-card .sub{font-size:13px;color:var(--ink-3);margin-bottom:24px}
+.field{margin-bottom:16px}
+.field label{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:7px}
+.field input,.field select,.field textarea{
+  width:100%;height:46px;padding:0 14px;border-radius:var(--r-sm);
+  border:1.5px solid var(--line-2);background:var(--surface);
+  transition:.15s;
+}
+.field textarea{height:auto;padding:10px 14px;resize:vertical;min-height:80px;line-height:1.6}
+.field input:focus,.field select:focus,.field textarea:focus{
+  outline:none;border-color:var(--brand);
+  box-shadow:0 0 0 4px var(--brand-soft);
+}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  height:44px;padding:0 20px;border-radius:var(--r-sm);font-size:14px;
+  font-weight:600;transition:.15s;white-space:nowrap;
+}
+.btn-primary{background:var(--brand);color:#fff;
+  box-shadow:0 6px 18px rgba(255,61,78,.30);}
+.btn-primary:hover{background:var(--brand-ink)}
+.btn-secondary{background:var(--surface);color:var(--ink);
+  border:1.5px solid var(--line-2);}
+.btn-secondary:hover{border-color:var(--ink-3);background:var(--surface-2)}
+.btn-soft{background:var(--brand-soft);color:var(--brand-ink)}
+.btn-soft:hover{background:#FFE0DE}
+.btn-ghost{background:transparent;color:var(--ink-2);padding:6px 10px;height:auto;font-size:13px}
+.btn-danger{background:#fff;color:var(--ink-2);border:1.5px solid var(--line-2)}
+.btn-danger:hover{border-color:var(--brand);color:var(--brand-ink);background:var(--brand-soft)}
+.btn-sm{height:32px;padding:0 12px;font-size:13px;border-radius:8px}
+.btn-block{width:100%}
+.alert{padding:10px 14px;border-radius:var(--r-sm);font-size:13px;font-weight:500;
+  margin-bottom:18px;display:flex;align-items:center;gap:9px}
+.alert-success{background:var(--teal-soft);color:#0A8A7D;border:1px solid #B5EBE3}
+.alert-error{background:var(--brand-soft);color:var(--brand-ink);border:1px solid #FBC9C9}
+.auth-foot{font-size:12px;color:var(--ink-3);margin-top:18px;text-align:center}
+.auth-foot code{font-size:11.5px}
+
+
+/* ============================================================ App 布局 */
+.app{display:flex;min-height:100vh}
+.sidebar{
+  width:238px;flex-shrink:0;background:var(--surface);
+  border-right:1px solid var(--line);padding:22px 16px;
+  display:flex;flex-direction:column;
+}
+.sb-brand{display:flex;align-items:center;gap:12px;padding:0 8px 18px}
+.sb-brand .logo{
+  width:40px;height:40px;border-radius:11px;
+  background:var(--grad);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-size:21px;
+}
+.sb-brand b{font-size:15px;font-weight:700;display:block;line-height:1.15}
+.sb-brand small{display:block;font-size:10px;font-weight:600;color:var(--ink-3);
+  letter-spacing:.14em;margin-top:3px}
+.sb-tag{padding:0 12px 16px;font-size:12px;color:var(--ink-3);letter-spacing:.02em}
+.nav-grp{font-size:10.5px;font-weight:700;color:var(--ink-3);
+  letter-spacing:.08em;text-transform:uppercase;
+  padding:14px 12px 8px;}
+.nav-i{display:flex;align-items:center;gap:11px;padding:10px 12px;
+  border-radius:11px;font-size:14px;font-weight:500;color:var(--ink-2);
+  margin-bottom:2px;cursor:pointer;border:1px solid transparent;
+}
+.nav-i:hover{background:var(--surface-2)}
+.nav-i.active{background:var(--brand-soft);color:var(--brand-ink);font-weight:600;
+  border-color:#FBD5D5}
+.nav-i .ic{font-size:15px;width:18px;display:flex;justify-content:center}
+.nav-i .cnt{margin-left:auto;font-size:11px;font-weight:700;
+  padding:2px 8px;border-radius:999px;background:var(--surface-2);
+  color:var(--ink-3);border:1px solid var(--line);}
+.nav-i.active .cnt{background:var(--brand);color:#fff;border-color:var(--brand)}
+.sb-promo{margin-top:auto;background:var(--surface-2);border:1px solid var(--line);
+  border-radius:14px;padding:14px;box-shadow:var(--shadow-sm);}
+.sb-promo .l{font-size:11.5px;color:var(--ink-3)}
+.sb-promo .v{font-size:18px;font-weight:700;margin:3px 0 8px;
+  font-variant-numeric:tabular-nums;color:var(--ink)}
+.bar{height:6px;border-radius:999px;background:#EEEDF5;overflow:hidden}
+.bar i{display:block;height:100%;border-radius:999px;background:var(--grad)}
+.sb-promo .f{font-size:11px;color:var(--ink-3);margin-top:7px}
+
+.main{flex:1;display:flex;flex-direction:column;min-width:0}
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 28px;border-bottom:1px solid var(--line);
+  background:var(--surface);
+}
+.crumb{font-size:13px;color:var(--ink-3)}
+.crumb b{color:var(--ink);font-weight:600}
+.top-r{display:flex;align-items:center;gap:14px}
+.user-chip{display:flex;align-items:center;gap:9px;font-size:13.5px;font-weight:600;
+  padding:5px 10px 5px 5px;border-radius:999px;background:var(--surface-2);
+  border:1px solid var(--line);}
+.user-chip .av{width:28px;height:28px;border-radius:50%;
+  background:var(--grad);color:#fff;display:flex;align-items:center;
+  justify-content:center;font-weight:700;font-size:12.5px}
+
+.content{flex:1;padding:24px 28px 40px;overflow:auto}
+.page-head{display:flex;align-items:center;justify-content:space-between;
+  margin-bottom:18px;gap:14px;flex-wrap:wrap}
+.page-head h1{font-size:22px;font-weight:700;display:flex;align-items:center;gap:10px}
+.page-head .ic{width:24px;height:24px;color:var(--brand);
+  display:flex;align-items:center;justify-content:center;font-size:19px}
+.page-head .meta{font-size:13px;color:var(--ink-3);margin-top:4px}
+
+
+/* ============================================================ KPI */
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:18px 20px;box-shadow:var(--shadow-sm);position:relative;overflow:hidden}
+.kpi .l{font-size:12.5px;color:var(--ink-3);font-weight:500}
+.kpi .v{font-size:30px;font-weight:700;letter-spacing:-.02em;margin-top:4px;
+  font-variant-numeric:tabular-nums;line-height:1.1}
+.kpi .delta{font-size:11.5px;color:var(--ink-3);margin-top:5px}
+.kpi.brand .v{color:var(--brand-ink)}
+.kpi.teal .v{color:#0A8A7D}
+.kpi.amber .v{color:#B57500}
+.kpi.gray .v{color:var(--ink-3)}
+.kpi::after{content:"";position:absolute;right:-12px;top:-12px;
+  width:64px;height:64px;border-radius:50%;opacity:.04}
+.kpi.brand::after{background:var(--brand)}
+.kpi.teal::after{background:var(--teal)}
+.kpi.amber::after{background:var(--amber)}
+.kpi.gray::after{background:var(--ink-3)}
+
+
+/* ============================================================ 卡片 / Panel */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  box-shadow:var(--shadow-sm);overflow:hidden;margin-bottom:16px}
+.card-h{padding:16px 20px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:14px}
+.card-h h2{font-size:15px;font-weight:700;display:flex;align-items:center;gap:9px}
+.card-h h2 .ic{color:var(--brand);font-size:15px}
+.card-h p{font-size:12.5px;color:var(--ink-3);margin-top:2px}
+.card-b{padding:18px 20px}
+.card-b.flush{padding:0}
+
+
+/* ============================================================ 表格 */
+.tbl-wrap{border-radius:14px;border:1px solid var(--line);
+  background:var(--surface);overflow:hidden;box-shadow:var(--shadow-sm)}
+.tbl{width:100%;border-collapse:separate;border-spacing:0;font-size:13.5px}
+.tbl thead th{text-align:left;font-size:11px;font-weight:700;color:var(--ink-3);
+  letter-spacing:.05em;text-transform:uppercase;padding:12px 16px;
+  border-bottom:1px solid var(--line);background:var(--surface-2)}
+.tbl tbody td{padding:14px 16px;border-bottom:1px solid var(--line);vertical-align:middle}
+.tbl tbody tr:last-child td{border-bottom:none}
+.tbl tbody tr:hover{background:var(--surface-2)}
+.tbl .who{font-weight:700;display:flex;align-items:center;gap:9px}
+.tbl .who .av{width:30px;height:30px;border-radius:50%;background:var(--grad);
+  color:#fff;display:flex;align-items:center;justify-content:center;
+  font-size:12.5px;font-weight:700}
+.tbl .who.is-admin .av{background:var(--violet)}
+.tbl .num{font-variant-numeric:tabular-nums;color:var(--ink-2);font-size:13px}
+.tbl .actions{text-align:right;white-space:nowrap}
+
+
+/* ============================================================ chip */
+.chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;
+  border-radius:999px;font-size:12px;font-weight:600}
+.chip .dot{width:7px;height:7px;border-radius:50%}
+.chip-teal{background:var(--teal-soft);color:#0A8A7D}
+.chip-teal .dot{background:var(--teal)}
+.chip-amber{background:var(--amber-soft);color:#B57500}
+.chip-amber .dot{background:var(--amber)}
+.chip-gray{background:#F0F0F6;color:var(--ink-3)}
+.chip-gray .dot{background:var(--ink-3)}
+.chip-red{background:var(--brand-soft);color:var(--brand-ink)}
+.chip-red .dot{background:var(--brand)}
+
+
+/* ============================================================ 表单组件 */
+.checkbox{display:inline-flex;align-items:center;gap:9px;cursor:pointer;
+  padding:8px 12px;border-radius:var(--r-sm);
+  border:1px solid var(--line);background:var(--surface)}
+.checkbox input[type=checkbox]{
+  width:18px;height:18px;accent-color:var(--brand);cursor:pointer}
+.checkbox span{font-size:13.5px;font-weight:500}
+
+.row{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+.row.three{grid-template-columns:repeat(3,1fr)}
+.help{font-size:11.5px;color:var(--ink-3);margin-top:6px}
+.divider{height:1px;background:var(--line);margin:18px 0}
+
+
+/* ============================================================ Toolbar */
+.toolbar{display:flex;align-items:center;gap:10px;padding:14px 16px;
+  background:var(--surface-2);border:1px solid var(--line);border-radius:14px;
+  margin-bottom:16px;flex-wrap:wrap}
+.toolbar .sep{width:1px;height:28px;background:var(--line-2);margin:0 4px}
+.toolbar .search{flex:1;display:flex;align-items:center;gap:8px;
+  background:var(--surface);border:1.5px solid var(--line-2);border-radius:10px;
+  padding:0 12px;height:38px;min-width:200px}
+.toolbar .search input{border:none;outline:none;background:none;
+  width:100%;font-size:13.5px}
+.toolbar .search svg{color:var(--ink-3);flex-shrink:0}
+
+
+/* ============================================================ toast */
+.toast-wrap{position:fixed;top:18px;right:18px;z-index:1000;
+  display:flex;flex-direction:column;gap:9px}
+.toast{padding:12px 16px;border-radius:var(--r-sm);font-size:13px;font-weight:600;
+  min-width:240px;display:flex;align-items:center;gap:9px;
+  box-shadow:0 12px 28px rgba(23,26,38,.15);animation:slidein .25s ease-out}
+@keyframes slidein{from{transform:translateX(120%);opacity:0}to{transform:translateX(0);opacity:1}}
+.toast.success{background:var(--teal-soft);color:#0A8A7D;border:1px solid #B5EBE3}
+.toast.error{background:var(--brand-soft);color:var(--brand-ink);border:1px solid #FBC9C9}
+
+
+/* ============================================================ 帮助页 */
+.help-block{background:var(--surface);border:1px solid var(--line);border-radius:14px;
+  padding:24px 26px;box-shadow:var(--shadow-sm);font-size:14px;line-height:1.85;
+  color:var(--ink-2);margin-bottom:14px}
+.help-block h3{color:var(--ink);font-size:15px;font-weight:700;margin-bottom:10px;
+  display:flex;align-items:center;gap:9px}
+.help-block h3:not(:first-child){margin-top:22px}
+.help-block h3 .ic{color:var(--brand);font-size:15px}
+.help-block ol,.help-block ul{padding-left:24px}
+.help-block li{margin:5px 0}
+.help-block code{background:var(--surface-2);padding:2px 8px;border-radius:6px;
+  border:1px solid var(--line);font-size:12.5px;color:var(--ink)}
+.help-block .kbd{display:inline-block;padding:2px 8px;border-radius:6px;
+  background:var(--surface-2);border:1px solid var(--line);
+  box-shadow:0 1px 0 var(--line-2);font-size:12px;font-weight:600;color:var(--ink-2)}
+
+
+/* ============================================================ mini 按钮组 (row actions) */
+.action-row{display:inline-flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.icon-btn{
+  width:34px;height:34px;border-radius:9px;
+  display:inline-flex;align-items:center;justify-content:center;
+  border:1.5px solid var(--line-2);background:var(--surface);color:var(--ink-2);
+  cursor:pointer;transition:.12s;font-size:14px;
+}
+.icon-btn:hover{border-color:var(--brand);color:var(--brand-ink);background:var(--brand-soft)}
+.icon-btn.danger:hover{border-color:#DC4747;color:#DC4747;background:#FFEFEF}
+.icon-btn:disabled{opacity:.4;cursor:not-allowed}
+
+
+/* ============================================================ modal */
+.modal-overlay{position:fixed;inset:0;background:rgba(23,26,38,.42);
+  backdrop-filter:blur(3px);z-index:200;display:none;align-items:center;
+  justify-content:center;padding:24px}
+.modal-overlay.show{display:flex}
+.modal{width:100%;max-width:480px;background:var(--surface);border-radius:20px;
+  box-shadow:0 28px 70px rgba(23,26,38,.16);overflow:hidden;max-height:90vh;
+  display:flex;flex-direction:column}
+.modal-h{display:flex;align-items:center;justify-content:space-between;
+  padding:20px 24px 4px}
+.modal-h h3{font-size:18px;font-weight:700}
+.modal-h p{font-size:13px;color:var(--ink-3);margin-top:3px}
+.modal-b{padding:18px 24px 8px;overflow:auto}
+.modal-f{display:flex;justify-content:flex-end;gap:10px;
+  padding:14px 24px 20px;border-top:1px solid var(--line)}
+
+
+/* ============================================================ responsive */
+@media (max-width:1100px){
+  .kpis{grid-template-columns:repeat(2,1fr)}
+}
+@media (max-width:840px){
+  .sidebar{width:64px;padding:18px 8px}
+  .sidebar .sb-brand b,.sidebar .sb-brand small,
+  .sidebar .sb-tag,.sidebar .nav-grp,.sidebar .nav-i span:not(.ic):not(.cnt),
+  .sidebar .sb-promo{display:none}
+  .sidebar .nav-i{justify-content:center}
+  .row{grid-template-columns:1fr}
+}

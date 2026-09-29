@@ -1,5 +1,5 @@
 #!/bin/bash
-# 启动管理后台（首次运行自动建 venv、装依赖）
+# 启动管理后台（FastAPI + Jinja2 全自定义 UI）
 set -e
 DIR="$(cd "$(dirname "$0")" && pwd)"
 cd "$DIR"
@@ -14,9 +14,9 @@ if [ ! -x "$VENV/bin/python" ]; then
   "$VENV/bin/python" -m pip install -i https://mirrors.aliyun.com/pypi/simple/ -r requirements.txt
 fi
 
-echo "[2/3] 启动管理后台（Streamlit :8501）..."
+echo "[2/3] 启动管理后台（FastAPI + uvicorn :8501）..."
 echo "    浏览器会自动打开 http://localhost:8501"
 echo "    默认管理员账号在 server 的 admin_credentials.txt 里"
 echo "    Ctrl+C 退出"
 echo "---"
-exec "$VENV/bin/python" -m streamlit run admin.py --server.address 0.0.0.0 --server.port 8501 "$@"
+exec "$VENV/bin/python" -m uvicorn admin:app --host 0.0.0.0 --port 8501 --app-dir "$DIR" "$@"

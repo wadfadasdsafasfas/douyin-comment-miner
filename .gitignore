@@ -9,3 +9,6 @@ dist/
 *.spec
 .DS_Store
 *.log
+
+# L2 桌面级：用户运行时偏好（不入仓）
+desktop/prefs.json
