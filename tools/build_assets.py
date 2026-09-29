@@ -21,6 +21,7 @@
 from __future__ import annotations
 
 import argparse
+import io
 import shutil
 import subprocess
 import sys
@@ -28,9 +29,21 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw
 
+# Windows CI 默认 cp1252 编码会让中文 print 直接抛 UnicodeEncodeError
+# reconfigure stdout 到 utf-8 后安全
+try:
+    sys.stdout.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+    sys.stderr.reconfigure(encoding="utf-8")  # type: ignore[attr-defined]
+except Exception:
+    pass
+
 ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "desktop" / "assets"
-DEFAULT_SRC = Path("/Library/知识库/听潮-切图-多彩数据版/logo")
+# 默认从仓内 desktop/assets-src/ 读 SVG（CI 友好）
+# 本地开发时可用 --src 指向切图包原路径覆盖：
+#   python tools/build_assets.py --src "/Library/知识库/听潮-切图-多彩数据版/logo"
+DEFAULT_SRC = ROOT / "desktop" / "assets-src"
+LOCAL_FALLBACK_SRC = Path("/Library/知识库/听潮-切图-多彩数据版/logo")
 
 TRAY_SIZES = [16, 22, 32, 44, 64, 128, 256]      # macOS 22/44 是菜单栏标准
 NOTIFY_SIZES = [64, 128, 256]
@@ -44,8 +57,7 @@ def render_svg(svg_path: Path, size: int) -> Image.Image:
     try:
         import cairosvg  # type: ignore
         png_bytes = cairosvg.svg2png(url=str(svg_path), output_width=size, output_height=size)
-        from io import BytesIO
-        return Image.open(BytesIO(png_bytes)).convert("RGBA")
+        return Image.open(io.BytesIO(png_bytes)).convert("RGBA")
     except ImportError:
         pass
     except Exception:
@@ -58,8 +70,7 @@ def render_svg(svg_path: Path, size: int) -> Image.Image:
                 ["rsvg-convert", "-w", str(size), "-h", str(size), str(svg_path)],
                 timeout=15,
             )
-            from io import BytesIO
-            return Image.open(BytesIO(out)).convert("RGBA")
+            return Image.open(io.BytesIO(out)).convert("RGBA")
         except Exception as e:
             print(f"  ! rsvg-convert 失败: {e}")
 
@@ -172,17 +183,35 @@ def gen_app_icns(app_svg: Path) -> None:
 # ---------- main ----------
 def main() -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--src", default=str(DEFAULT_SRC), help="切图包 logo 目录")
+    parser.add_argument("--src", default=None,
+                        help=f"切图包 logo 目录（默认优先 {DEFAULT_SRC}，"
+                             f"fallback 到 {LOCAL_FALLBACK_SRC}）")
     args = parser.parse_args()
 
-    src = Path(args.src)
+    # 优先级：--src 指定 > 仓内 assets-src > 本地切图包
+    candidates = []
+    if args.src:
+        candidates.append(Path(args.src))
+    candidates.append(DEFAULT_SRC)
+    if LOCAL_FALLBACK_SRC != DEFAULT_SRC:
+        candidates.append(LOCAL_FALLBACK_SRC)
+
+    src = None
+    for c in candidates:
+        if (c / "app-icon.svg").exists() and (c / "logo-mono.svg").exists():
+            src = c
+            break
+
+    if src is None:
+        print("错误：找不到 SVG 资源")
+        for c in candidates:
+            print(f"  试过: {c}  "
+                  f"(app-icon.svg={ (c/'app-icon.svg').exists() },"
+                  f" logo-mono.svg={ (c/'logo-mono.svg').exists() })")
+        return 1
+
     app_svg = src / "app-icon.svg"
     mono_svg = src / "logo-mono.svg"
-    if not app_svg.exists() or not mono_svg.exists():
-        print(f"错误：找不到 SVG 资源")
-        print(f"  {app_svg}: {app_svg.exists()}")
-        print(f"  {mono_svg}: {mono_svg.exists()}")
-        return 1
 
     ASSETS.mkdir(parents=True, exist_ok=True)
 
