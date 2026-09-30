@@ -20,6 +20,8 @@ echo "使用 Python: $PY"
 NAME="tingchao-sidecar"
 SEP=":"
 [ "$(uname -s)" = "Windows_NT" ] && SEP=";"
+# git-bash 下 $PWD 是 /d/a/... 这种 Unix 路径，PyInstaller 不认；取 Windows 原生路径
+WINPWD="$(pwd -W 2>/dev/null || pwd)"
 
 # PyInstaller 的 -m 只接受脚本文件，因此先生成一个入口脚本
 cat > _sidecar_entry.py <<'ENTRY'
@@ -39,7 +41,7 @@ mkdir -p dist-sidecar
   --distpath dist-sidecar \
   --workpath build/sidecar \
   --specpath build/sidecar \
-  --paths "$PWD" \
+  --paths "$WINPWD" \
   --collect-all uvicorn \
   --collect-submodules fastapi \
   --hidden-import tingchao.local_api \
@@ -49,11 +51,11 @@ mkdir -p dist-sidecar
   --hidden-import douyin_miner \
   --hidden-import license \
   --hidden-import server_url \
-  --add-data "$PWD/tingchao/web${SEP}tingchao/web" \
-  --add-data "$PWD/tingchao/updater.py${SEP}tingchao" \
-  --add-data "$PWD/server_url.py${SEP}." \
-  --add-data "$PWD/douyin_miner.py${SEP}." \
-  --add-data "$PWD/license.py${SEP}." \
+  --add-data "$WINPWD/tingchao/web${SEP}tingchao/web" \
+  --add-data "$WINPWD/tingchao/updater.py${SEP}tingchao" \
+  --add-data "$WINPWD/server_url.py${SEP}." \
+  --add-data "$WINPWD/douyin_miner.py${SEP}." \
+  --add-data "$WINPWD/license.py${SEP}." \
   _sidecar_entry.py
 
 rm -f _sidecar_entry.py
