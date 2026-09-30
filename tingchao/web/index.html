@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>听潮 · TideSignal</title>
+<link rel="icon" href="/favicon.svg">
+<link rel="stylesheet" href="/assets/tokens.css">
+<link rel="stylesheet" href="/assets/tingchao-ui.css">
+<link rel="stylesheet" href="/assets/app.css">
+</head>
+<body class="tc-app">
+
+<!-- ============ 登录视图 ============ -->
+<div id="view-login" class="login-screen hidden">
+  <div class="tc-login">
+    <div class="tc-login-brand">
+      <span class="tc-logo"><img src="/assets/logo/logo-white.svg" width="36" height="36" alt=""></span>
+      <div class="tc-login-wordmark">听潮</div>
+      <div class="tc-login-en">TIDE SIGNAL</div>
+      <div class="tc-login-slogan">潮声之下，皆是<em>商机</em></div>
+      <div class="tc-login-feats">
+        <div class="tc-login-feat"><span class="tc-icon-box"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-comment"/></svg></span>抖音 / 小红书评论实时抓取，关键词秒级命中</div>
+        <div class="tc-login-feat"><span class="tc-icon-box"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-check-square"/></svg></span>自动去重成线索池，跨任务不重复</div>
+        <div class="tc-login-feat"><span class="tc-icon-box"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-trend"/></svg></span>采集趋势与命中构成，全程可视化</div>
+      </div>
+    </div>
+    <div class="tc-login-form">
+      <div class="tc-login-card">
+        <span class="tc-server-chip"><span class="tc-dot" id="srv-dot"></span><span id="srv-text">正在连接本地服务…</span></span>
+        <div class="tc-login-hello">欢迎回来</div>
+        <div class="tc-login-tip">登录后进入评论监控工作台</div>
+        <div class="tc-field"><label class="tc-label">账号</label>
+          <input class="tc-input tc-input-lg" id="lg-user" placeholder="请输入账号" autocomplete="username"></div>
+        <div class="tc-field"><label class="tc-label">密码</label>
+          <div class="tc-input-wrap">
+            <input class="tc-input tc-input-lg" id="lg-pass" type="password" placeholder="请输入密码" autocomplete="current-password">
+            <button class="tc-input-affix" id="lg-eye"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-eye"/></svg></button>
+          </div></div>
+        <div id="lg-error" class="login-error hidden"></div>
+        <button class="tc-btn tc-btn-primary tc-btn-block" id="lg-btn" style="height:52px;margin-top:6px;font-size:16px">登 录</button>
+        <button class="tc-btn tc-btn-ghost tc-btn-block" id="lg-trial" style="margin-top:10px">申请 3 小时试用</button>
+        <div class="tc-login-foot">没有账号？<span class="tc-link">联系销售开通</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 主视图 ============ -->
+<div id="view-app" class="app-screen hidden">
+  <div class="tc-shell" id="shell">
+    <aside class="tc-sidebar">
+      <div class="tc-brand">
+        <span class="tc-logo"><img src="/assets/logo/logo-mark.svg" width="36" height="36" alt=""></span>
+        <div class="tc-brand-name">听潮<small>TIDE SIGNAL</small></div>
+      </div>
+      <div class="tc-slogan">潮声之下，皆是商机</div>
+      <div class="tc-nav-group">采集</div>
+      <div class="tc-nav-item is-active" data-page="monitor"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-comment"/></svg>评论监控<span class="tc-count tc-count-on tc-nav-count" id="nav-live">0</span></div>
+      <div class="tc-nav-item" data-page="leads"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-check-square"/></svg>线索名单<span class="tc-count tc-nav-count" id="nav-leads">0</span></div>
+      <div class="tc-nav-group">运营</div>
+      <div class="tc-nav-item" data-page="platforms"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-globe"/></svg>平台账号</div>
+      <div class="tc-nav-group">设置</div>
+      <div class="tc-nav-item" data-page="settings"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-settings"/></svg>系统设置</div>
+      <div class="tc-nav-item" data-page="help"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-help"/></svg>使用说明</div>
+      <div class="tc-quota">
+        <div style="font-size:11.5px;color:var(--tc-ink-3)">授权剩余</div>
+        <div style="font-size:15px;font-weight:700;margin:3px 0 8px" id="quota-days">—</div>
+        <div class="tc-progress"><i id="quota-bar" style="width:0%"></i></div>
+        <div style="font-size:11px;color:var(--tc-ink-3);margin-top:7px" id="quota-exp">—</div>
+      </div>
+      <div class="tc-slogan" style="margin-top:auto;padding-top:14px;border-top:1px solid var(--tc-line)" id="side-ver">v1.0</div>
+    </aside>
+
+    <div class="tc-main">
+      <div class="tc-topbar">
+        <div class="tc-crumb">听潮 / <b id="crumb">评论监控</b></div>
+        <div style="display:flex;align-items:center;gap:14px">
+          <span class="tc-live" style="margin:0" id="top-live"></span>
+          <div class="tc-cell-title"><span class="tc-avatar tc-avatar-sm tc-avatar-grad" id="top-av">T</span><span id="top-user">—</span></div>
+          <button class="tc-btn tc-btn-ghost tc-btn-sm" id="btn-logout">退出登录</button>
+        </div>
+      </div>
+
+      <div class="tc-content">
+        <!-- ---------- 评论监控 ---------- -->
+        <section class="page" id="page-monitor">
+          <div class="page-head">
+            <h2 class="tc-page-title"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-comment"/></svg>评论监控</h2>
+            <div class="tc-seg" id="plat-seg">
+              <button class="is-on" data-p="douyin">抖音</button>
+              <button data-p="xhs">小红书</button>
+            </div>
+          </div>
+
+          <div class="tc-toolbar">
+            <button class="tc-btn tc-btn-ghost" id="btn-config"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-settings"/></svg>配置</button>
+            <button class="tc-btn tc-btn-primary" id="btn-start"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-play"/></svg>开始抓取</button>
+            <button class="tc-btn tc-btn-danger" id="btn-stop" disabled><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-stop"/></svg>停止</button>
+            <span class="tc-toolbar-divider"></span>
+            <button class="tc-btn tc-btn-violet" id="btn-open-leads"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-table"/></svg>查看线索池</button>
+            <div class="tc-live" id="live"><span class="tc-pulse"></span><span id="live-text">未开始</span></div>
+          </div>
+
+          <div class="tc-kpi-grid" style="margin-bottom:16px">
+            <div class="tc-stat"><div class="tc-stat-label">本轮已扫评论</div><div class="tc-stat-value" id="k-collected">0</div></div>
+            <div class="tc-stat"><div class="tc-stat-label">关键词命中</div><div class="tc-stat-value is-brand" id="k-hits">0</div></div>
+            <div class="tc-stat"><div class="tc-stat-label">新增线索（去重后）</div><div class="tc-stat-value" id="k-new">0</div></div>
+            <div class="tc-stat"><div class="tc-stat-label">线索池总量</div><div class="tc-stat-value" id="k-total">0</div></div>
+          </div>
+
+          <div class="tc-charts-grid" style="margin-bottom:16px">
+            <div class="tc-card tc-card-pad">
+              <div class="card-head"><b>近 7 天新增线索</b><span class="muted" id="trend-sum"></span></div>
+              <svg class="tc-chart-line" id="chart-trend" viewBox="0 0 640 190" preserveAspectRatio="none"></svg>
+            </div>
+            <div class="tc-card tc-card-pad">
+              <div class="card-head"><b>关键词命中构成</b><span class="muted">Top 5</span></div>
+              <div class="donut-wrap">
+                <svg class="tc-donut" id="chart-donut" viewBox="0 0 140 140"></svg>
+                <div class="donut-legend" id="donut-legend"></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="tc-table-wrap">
+            <table class="tc-table">
+              <thead><tr><th style="width:44px">#</th><th>平台</th><th>昵称</th><th>评论内容</th><th>命中词</th><th>时间</th><th class="is-right">操作</th></tr></thead>
+              <tbody id="live-rows"></tbody>
+            </table>
+            <div class="tc-empty" id="live-empty">还没有数据 —— 点「开始抓取」，或在「配置」里填写视频链接与关键词</div>
+          </div>
+        </section>
+
+        <!-- ---------- 线索名单 ---------- -->
+        <section class="page hidden" id="page-leads">
+          <div class="page-head">
+            <h2 class="tc-page-title"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-check-square"/></svg>线索名单</h2>
+            <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+              <div class="tc-input-wrap" style="width:220px">
+                <svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-search"/></svg>
+                <input class="tc-input" id="leads-q" placeholder="搜索昵称 / 评论 / 命中词" style="height:38px">
+              </div>
+              <select class="tc-input tc-select" id="leads-status" style="width:130px;height:38px">
+                <option value="all">全部状态</option><option value="new">待联系</option>
+                <option value="contacted">已联系</option><option value="replied">已回复</option>
+                <option value="won">已成交</option><option value="invalid">无效</option>
+              </select>
+            </div>
+          </div>
+          <div class="tc-batchbar hidden" id="leads-batch">
+            <span id="batch-count">已选 0 条</span>
+            <select class="tc-input tc-select" id="batch-status" style="width:130px;height:34px">
+              <option value="">标记为…</option><option value="contacted">已联系</option>
+              <option value="replied">已回复</option><option value="won">已成交</option><option value="invalid">无效</option>
+            </select>
+            <button class="tc-btn tc-btn-ghost tc-btn-sm" id="batch-apply">应用</button>
+            <button class="tc-btn tc-btn-primary tc-btn-sm" id="btn-export"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-download"/></svg>导出全部</button>
+          </div>
+          <div class="tc-table-wrap">
+            <table class="tc-table">
+              <thead><tr>
+                <th style="width:38px"><span class="tc-check" id="chk-all"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M20 6 9 17l-5-5"/></svg></span></th>
+                <th>平台</th><th>昵称</th><th>评论内容</th><th>命中词</th><th>状态</th><th>发现时间</th><th class="is-right">操作</th></tr></thead>
+              <tbody id="leads-rows"></tbody>
+            </table>
+            <div class="tc-empty hidden" id="leads-empty">线索池还是空的</div>
+          </div>
+          <div class="tc-pager"><span id="leads-sum"></span>
+            <div class="tc-pager-pages" id="leads-pager"></div></div>
+        </section>
+
+        <!-- ---------- 平台账号 ---------- -->
+        <section class="page hidden" id="page-platforms">
+          <div class="page-head"><h2 class="tc-page-title"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-globe"/></svg>平台账号</h2></div>
+          <div class="plat-grid" id="plat-grid"></div>
+        </section>
+
+        <!-- ---------- 设置 ---------- -->
+        <section class="page hidden" id="page-settings">
+          <div class="page-head"><h2 class="tc-page-title"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-settings"/></svg>抓取配置</h2></div>
+          <div class="tc-card tc-card-pad" style="max-width:680px">
+            <div id="settings-body"></div>
+            <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px">
+              <button class="tc-btn tc-btn-ghost" id="btn-check-update">检查更新</button>
+              <button class="tc-btn tc-btn-primary" id="btn-save-config">保存配置</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---------- 说明 ---------- -->
+        <section class="page hidden" id="page-help">
+          <div class="page-head"><h2 class="tc-page-title"><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-help"/></svg>使用说明</h2></div>
+          <div class="tc-card tc-card-pad help" style="max-width:760px">
+            <h4>三步开始获客</h4>
+            <ol><li>「平台账号」里扫码登录抖音，登录态只存在你自己的电脑上。</li>
+              <li>「评论监控 → 配置」里粘贴视频链接、填关键词，点「开始抓取」。</li>
+              <li>命中的评论自动进「线索名单」，跨任务去重，勾选后导出 Excel 跟进。</li></ol>
+            <h4>合规提醒</h4>
+            <p>本工具只做<b>名单导出与自行跟进</b>，不内置批量私信。批量私信陌生人是平台重点打击的违规引流，且涉及个人信息合规风险。</p>
+            <h4>数据在哪</h4>
+            <p>线索与配置存在本机 <code>~/.tingchao/</code>；账号与授权校验走云端，评论原文不上传。</p>
+          </div>
+        </section>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============ 配置弹窗 ============ -->
+<div class="tc-overlay hidden" id="ov-config"><div class="tc-modal" style="max-width:520px">
+  <div class="tc-modal-head"><div><div class="tc-modal-title">抓取配置</div><div class="tc-modal-sub">关键词、链接与抓取深度</div></div>
+    <button class="tc-modal-close" data-close><svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-close"/></svg></button></div>
+  <div class="tc-modal-body" id="cfg-body"></div>
+  <div class="tc-modal-foot"><button class="tc-btn tc-btn-ghost" data-close>取消</button><button class="tc-btn tc-btn-primary" id="cfg-save">保存</button></div>
+</div></div>
+
+<!-- ============ 顶号冲突 ============ -->
+<div class="tc-overlay hidden" id="ov-conflict"><div class="tc-modal" style="max-width:420px">
+  <div class="tc-modal-head"><div><div class="tc-modal-title">账号已在其他设备登录</div><div class="tc-modal-sub" id="conflict-dev"></div></div></div>
+  <div class="tc-modal-body"><p style="font-size:13.5px;color:var(--tc-ink-2);line-height:1.7">继续登录会把另一台设备踢下线。确认吗？</p></div>
+  <div class="tc-modal-foot"><button class="tc-btn tc-btn-ghost" data-close>取消</button><button class="tc-btn tc-btn-primary" id="conflict-ok">继续登录</button></div>
+</div></div>
+
+<div class="tc-toasts" id="toasts"></div>
+<script src="/assets/app.js"></script>
+</body>
+</html>

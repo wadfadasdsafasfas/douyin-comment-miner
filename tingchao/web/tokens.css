@@ -1,0 +1,70 @@
+/* ==========================================================================
+   听潮 TideSignal · Design Tokens  (多彩数据版 / Light Coral)
+   所有组件样式只引用这里的变量，换肤=改这份文件，不动组件。
+   ========================================================================== */
+:root{
+  /* ---- 品牌色 ---- */
+  --tc-brand:        #FF4D4D;   /* 主品牌色：CTA、命中数、选中态 */
+  --tc-brand-2:      #FF8A5B;   /* 渐变起点（暖橙） */
+  --tc-brand-ink:    #DE3232;   /* 品牌色上的文字 / 强调文字（浅底用） */
+  --tc-brand-soft:   #FFEDEC;   /* 品牌浅底：选中背景、标签底 */
+  --tc-grad:       linear-gradient(135deg,#FF8A5B 0%,#FF3D4E 100%);   /* 主按钮 / 头像 / 进度 */
+  --tc-grad-hero:  linear-gradient(125deg,#FF7A4D 0%,#FF3D6E 48%,#7C5CFF 100%); /* 横幅 / 登录左栏 */
+
+  /* ---- 辅助色（图表、次强调、徽标） ---- */
+  --tc-violet:      #7C5CFF;  --tc-violet-soft: #F0ECFF;
+  --tc-teal:        #0FB5A5;  --tc-teal-soft:   #E2F7F4;
+  --tc-amber:       #FFB020;  --tc-amber-soft:  #FFF4DC;
+
+  /* ---- 中性色 ---- */
+  --tc-page:     #E8E8F0;  /* 页面外的画布底色（做居中窗口容器时用） */
+  --tc-bg:       #F5F5FA;  /* 应用底色 */
+  --tc-surface:  #FFFFFF;  /* 卡片 / 面板 */
+  --tc-surface-2:#F8F8FC;  /* 次级面板 / 表头 / 悬停 */
+  --tc-ink:      #171A26;  /* 主文字 */
+  --tc-ink-2:    #5A6072;  /* 次文字 */
+  --tc-ink-3:    #9AA0B4;  /* 弱文字 / 占位 / 图标默认 */
+  --tc-line:     #EBEBF2;  /* 分隔线 */
+  --tc-line-2:   #DEDEE9;  /* 控件描边 */
+
+  /* ---- 语义色 ---- */
+  --tc-success:      #0A8A7D;  --tc-success-bg: #E2F7F4;
+  --tc-warning:      #B57500;  --tc-warning-bg: #FFF4DC;
+  --tc-danger:       #DE3232;  --tc-danger-bg:  #FFEDEC;
+  --tc-on-brand:     #FFFFFF;  /* 品牌色/渐变之上的文字 */
+
+  /* ---- 图表系列色（顺序固定，跨页一致） ---- */
+  --tc-chart-1: var(--tc-brand);
+  --tc-chart-2: var(--tc-violet);
+  --tc-chart-3: var(--tc-teal);
+  --tc-chart-grid: var(--tc-line);
+
+  /* ---- 字体 ---- */
+  --tc-font: -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Segoe UI",system-ui,sans-serif;
+  --tc-font-mono: "SF Mono",ui-monospace,Menlo,Consolas,monospace; /* 数字/日期用，保证对齐 */
+  --tc-fs-11:11px; --tc-fs-12:12px; --tc-fs-13:13px; --tc-fs-14:14px;
+  --tc-fs-16:16px; --tc-fs-18:18px; --tc-fs-22:22px; --tc-fs-26:26px; --tc-fs-32:32px;
+  --tc-lh-tight:1.15; --tc-lh-body:1.5;
+
+  /* ---- 间距（4pt 栅格） ---- */
+  --tc-sp-1:4px; --tc-sp-2:8px; --tc-sp-3:12px; --tc-sp-4:16px;
+  --tc-sp-5:20px; --tc-sp-6:24px; --tc-sp-8:32px; --tc-sp-10:40px;
+
+  /* ---- 圆角 ---- */
+  --tc-r-sm:10px; --tc-r-md:14px; --tc-r-lg:20px; --tc-r-xl:26px; --tc-r-full:999px;
+
+  /* ---- 阴影 ---- */
+  --tc-shadow-sm:0 1px 2px rgba(23,26,38,.05);
+  --tc-shadow-md:0 8px 24px rgba(23,26,38,.08);
+  --tc-shadow-lg:0 28px 70px rgba(23,26,38,.16);
+
+  /* ---- 控件尺寸 ---- */
+  --tc-h-input:44px; --tc-h-btn:42px; --tc-h-btn-sm:34px; --tc-h-row:52px;
+
+  /* ---- 动效 ---- */
+  --tc-dur-1:.14s; --tc-dur-2:.2s; --tc-ease:cubic-bezier(.2,.8,.2,1);
+
+  /* ---- 布局 ---- */
+  --tc-side-w:232px; --tc-topbar-h:58px; --tc-content-pad:28px;
+  --tc-bp-md:960px;  /* 响应式断点，媒体查询里手写同值 */
+}

@@ -3,6 +3,11 @@ openpyxl>=3.1
 customtkinter>=5.2
 requests>=2.31
 
-# L2 桌面级（系统托盘 + 原生通知 + App 图标）
+# 本地 sidecar（Electron 壳调用的 HTTP / SSE 服务）
+fastapi>=0.110
+uvicorn[standard]>=0.27
+pydantic>=2.5
+
+# L2 桌面级（系统托盘 + 原生通知 + App 图标）—— 旧 CustomTkinter 版仍在用
 pystray>=0.19.5
 Pillow>=10.0

@@ -1,0 +1,114 @@
+/* 听潮 · 应用层布局样式（组件样式见 tingchao-ui.css，色值/尺寸一律取 tokens 变量） */
+html,body{height:100%}
+body{margin:0;background:var(--tc-bg);color:var(--tc-ink);font-family:var(--tc-font);-webkit-font-smoothing:antialiased;overflow:hidden}
+.hidden{display:none !important}
+::selection{background:var(--tc-brand-soft)}
+
+/* 视图容器 —— 内容铺满窗口，不留外框（对齐网易云那种类原生观感） */
+.login-screen{height:100vh;display:flex;background:var(--tc-bg)}
+.login-screen .tc-login{width:100%;height:100vh;border-radius:0;box-shadow:none;border:none}
+.app-screen{height:100vh;padding:0;background:var(--tc-bg)}
+#shell{height:100vh;max-width:none;border-radius:0;border:none;box-shadow:none}
+
+/* macOS 隐藏标题栏后，给红绿灯留位；顶栏可拖拽窗口 */
+body[data-os="darwin"] .tc-sidebar{padding-top:34px}
+body[data-os="darwin"] .tc-login-brand{padding-top:44px}
+.tc-topbar{-webkit-app-region:drag;user-select:none}
+.tc-topbar button,.tc-topbar a,.tc-topbar input,.tc-topbar select,.tc-topbar .tc-avatar{-webkit-app-region:no-drag}
+/* 登录页无顶栏：左侧品牌区作为拖拽区，右侧表单保持可交互 */
+.tc-login-brand{-webkit-app-region:drag}
+.tc-login-brand .tc-link,.tc-login-form,.tc-login-form *{-webkit-app-region:no-drag}
+
+/* 顶栏 */
+.tc-topbar{flex-shrink:0}
+.tc-content{flex:1;overflow:auto;padding:24px 28px 32px}
+.page-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+
+/* 侧栏 */
+.tc-sidebar{overflow-y:auto}
+.tc-sidebar::-webkit-scrollbar,.tc-content::-webkit-scrollbar,.tc-table-wrap::-webkit-scrollbar{width:9px;height:9px}
+.tc-sidebar::-webkit-scrollbar-thumb,.tc-content::-webkit-scrollbar-thumb,.tc-table-wrap::-webkit-scrollbar-thumb{background:var(--tc-line-2);border-radius:9px}
+
+/* 表格滚动 */
+.tc-table-wrap{overflow:auto;max-height:none}
+.tc-table tbody td{white-space:nowrap}
+.tc-table .cell-comment{white-space:normal;max-width:420px;line-height:1.55;color:var(--tc-ink-2)}
+.tc-table .cell-nick{font-weight:600}
+
+/* 实时行插入动画 */
+@keyframes rowIn{from{opacity:0;transform:translateY(-6px);background:var(--tc-brand-soft)}to{opacity:1;transform:none}}
+.tc-table tbody tr.row-in{animation:rowIn .45s var(--tc-ease)}
+
+/* 卡片小标题 */
+.card-head{display:flex;align-items:baseline;justify-content:space-between;margin-bottom:10px;font-size:14px;font-weight:700}
+.card-head .muted{font-size:12px;font-weight:500;color:var(--tc-ink-3)}
+.donut-wrap{display:flex;align-items:center;gap:16px}
+.tc-donut{width:124px;height:124px;flex-shrink:0}
+.donut-legend{font-size:13px;line-height:2.05;color:var(--tc-ink-2);flex:1;min-width:0}
+.donut-legend div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.donut-legend b{float:right;font-variant-numeric:tabular-nums}
+
+/* 登录 */
+.tc-login-card{width:100%;max-width:340px}
+.tc-field{margin-bottom:16px}
+.login-error{background:var(--tc-danger-bg);color:var(--tc-danger);font-size:13px;font-weight:500;
+  padding:10px 12px;border-radius:var(--tc-r-sm);margin-bottom:14px;line-height:1.5}
+.tc-login-form{overflow-y:auto}
+
+/* 平台卡片 */
+.plat-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.plat-card{padding:20px;border:1px solid var(--tc-line);border-radius:var(--tc-r-md);background:var(--tc-surface);box-shadow:var(--tc-shadow-sm)}
+.plat-card .ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.plat-card .pn{font-size:16px;font-weight:700}
+.plat-card .pm{font-size:12.5px;color:var(--tc-ink-3);line-height:1.7;min-height:38px}
+.plat-card.is-off{opacity:.72}
+
+/* 配置表单 */
+.cfg-links{width:100%;min-height:96px;padding:12px 14px;border-radius:var(--tc-r-sm);border:1.5px solid var(--tc-line-2);
+  background:var(--tc-surface);color:var(--tc-ink);font-size:13px;font-family:var(--tc-font-mono);line-height:1.6;resize:vertical}
+.cfg-links:focus{outline:none;border-color:var(--tc-brand);box-shadow:0 0 0 3px var(--tc-brand-soft)}
+.cfg-hint{font-size:12px;color:var(--tc-ink-3);margin-top:6px;line-height:1.6}
+.cfg-2col{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.switch-row{display:flex;align-items:center;justify-content:space-between;padding:12px 0;border-top:1px solid var(--tc-line)}
+.switch-row .st{font-size:13.5px;font-weight:600}
+.switch-row .ss{font-size:12px;color:var(--tc-ink-3);margin-top:2px}
+
+/* 说明 */
+.help h4{font-size:14px;margin:18px 0 8px}
+.help h4:first-child{margin-top:0}
+.help p,.help li{font-size:13.5px;line-height:1.85;color:var(--tc-ink-2)}
+.help ol{padding-left:20px}
+.help code{font-family:var(--tc-font-mono);font-size:12.5px;background:var(--tc-surface-2);padding:1px 6px;border-radius:5px}
+
+/* 弹窗 */
+.tc-overlay{position:fixed;inset:0;background:rgba(23,26,38,.42);backdrop-filter:blur(3px);
+  display:flex;align-items:center;justify-content:center;padding:24px;z-index:300}
+.tc-modal{animation:tc-rise .2s var(--tc-ease)}
+
+/* 平台选择器（配置弹窗内） */
+.plat-pick{display:flex;gap:8px}
+.plat-pick .pp{flex:1;height:44px;border-radius:var(--tc-r-sm);border:1.5px solid var(--tc-line-2);
+  background:var(--tc-surface);color:var(--tc-ink-2);font-size:13.5px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:6px;transition:.14s}
+.plat-pick .pp:hover{border-color:var(--tc-ink-3)}
+.plat-pick .pp.is-on{border-color:var(--tc-brand);background:var(--tc-brand-soft);color:var(--tc-brand-ink)}
+.plat-pick .pp i{font-style:normal;font-size:10.5px;font-weight:700;color:var(--tc-ink-3);
+  background:var(--tc-surface-2);padding:1px 6px;border-radius:5px}
+.plat-pick .pp.is-off{cursor:not-allowed}
+
+/* 设置页信息行 */
+.info-row{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:11px 0;border-bottom:1px solid var(--tc-line);font-size:13.5px}
+.info-row:last-child{border-bottom:none}
+.info-row span{color:var(--tc-ink-3)}
+.info-row b{font-weight:600;text-align:right}
+
+/* 响应式：窄屏收侧栏 */
+@media (max-width:1080px){
+  #shell{flex-direction:column}
+  .tc-sidebar{width:100%;flex-direction:row;flex-wrap:wrap;align-items:center;padding:10px 14px;border-right:none;border-bottom:1px solid var(--tc-line)}
+  .tc-sidebar .tc-quota,.tc-slogan{display:none}
+  .tc-nav-group{display:none}
+  .tc-nav-item{padding:8px 12px}
+  .tc-kpi-grid{grid-template-columns:repeat(2,1fr)}
+  .tc-charts-grid{grid-template-columns:1fr}
+}

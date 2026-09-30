@@ -12,3 +12,15 @@ dist/
 
 # L2 桌面级：用户运行时偏好（不入仓）
 desktop/prefs.json
+
+# Electron 壳
+node_modules/
+electron/release/
+electron/.cache/
+
+# sidecar 打包产物（由 build_sidecar.sh 生成）
+dist-sidecar/
+!dist-sidecar/README.txt
+
+# 源码快照/备份（历史遗留，交给 git tag 管理）
+backups/

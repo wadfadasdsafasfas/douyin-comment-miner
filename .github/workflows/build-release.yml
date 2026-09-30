@@ -1,22 +1,30 @@
 name: build-release
 
-# 一次打 tag 同时出 Windows .exe 和 macOS .app，附到同一个 GitHub Release。
-# 用法：
-#   git tag v1.2.0 && git push origin v1.2.0
-# 然后打开 Releases 页面，下载对应平台的 zip。
+# 听潮 TideSignal —— Electron 桌面端双平台打包
+# 一次 tag 同时产出 4 类包：
+#   Windows  TingChao-windows-vX.Y.Z-setup.exe        （安装包）
+#   Windows  TingChao-windows-vX.Y.Z.zip              （绿色免安装）
+#   macOS    TingChao-macos-vX.Y.Z-{arm64,x64}.dmg    （安装包，双架构）
+#   macOS    TingChao-macos-vX.Y.Z-{arm64,x64}.zip    （绿色免安装，双架构）
+# 用法：git tag v1.0.1 && git push origin v1.0.1
+# 说明：GitHub runner 到国内云服务器网络不稳，上传服务器与写 latest_version 由本地脚本完成。
 
 on:
   push:
     tags:
       - 'v*'
-  workflow_dispatch:    # 允许手动触发重跑
+  workflow_dispatch:
 
 permissions:
-  contents: write   # 创建 Release 需要写权限
+  contents: write
+
+env:
+  ELECTRON_MIRROR: https://npmmirror.com/mirrors/electron/
+  ELECTRON_BUILDER_BINARIES_MIRROR: https://npmmirror.com/mirrors/electron-builder-binaries/
 
 jobs:
   # ============================================================
-  #  1. Windows 打包：产出 DouyinCommentMiner.exe
+  #  1. Windows：PyInstaller 打 sidecar → electron-builder 出 nsis + zip
   # ============================================================
   build-windows:
     runs-on: windows-latest
@@ -27,70 +35,58 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 安装依赖（清华 pip 镜像 + 阿里云 fallback，国内 CI 友好）
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装 Python 依赖（清华镜像 + 阿里云 fallback）
         run: |
           python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
           python -m pip install `
             --index-url https://pypi.tuna.tsinghua.edu.cn/simple `
             --extra-index-url https://mirrors.aliyun.com/pypi/simple/ `
             --extra-index-url https://pypi.org/simple `
-            playwright openpyxl customtkinter pyinstaller requests `
-            pystray Pillow `
-            cairosvg
+            -r requirements.txt pyinstaller
 
-      - name: L2 资产生成（PNG / ICO / ICNS）
+      - name: 安装前端依赖
+        working-directory: electron
+        run: npm ci --no-audit --no-fund
+
+      - name: 打 sidecar（本地 HTTP/SSE 服务）
+        shell: bash
+        run: bash ./build_sidecar.sh
+
+      - name: 冒烟：sidecar 能起并返回健康检查
+        shell: bash
         run: |
-          # 产物（tray-idle.png / app.ico / app.icns 等）已入仓 desktop/assets/，
-          # CI 上尽量复用；本地开发者改 SVG 后跑 tools/build_assets.py 重新生成。
-          # || true 是为了 Windows runner 缺 rsvg-convert / cairosvg 时不阻断构建。
-          python tools/build_assets.py || echo "[warn] build_assets.py 失败，但产物已入仓，继续打包"
+          ./dist-sidecar/tingchao-sidecar/tingchao-sidecar.exe --port 8799 > sc.log 2>&1 &
+          PID=$!
+          for i in $(seq 1 30); do
+            sleep 2
+            curl -sf -m 3 http://127.0.0.1:8799/api/health && { echo; break; }
+          done
+          kill $PID 2>/dev/null || true
+          grep -q '"ok":true' sc.log || { echo "sidecar 自检失败"; cat sc.log; exit 1; }
 
-      - name: PyInstaller · onedir · windowed
-        run: |
-          python -m PyInstaller --noconfirm --clean `
-            --name DouyinCommentMiner `
-            --windowed `
-            --onedir `
-            --paths . `
-            --collect-all playwright `
-            --collect-all openpyxl `
-            --collect-all customtkinter `
-            --collect-all requests `
-            --collect-all pystray `
-            --collect-all PIL `
-            --hidden-import openpyxl `
-            --hidden-import requests `
-            --hidden-import license `
-            --hidden-import server_url `
-            --hidden-import updater `
-            --hidden-import pystray._win32 `
-            --add-data "desktop/assets;desktop/assets" `
-            --icon desktop/assets/app.ico `
-            douyin_miner_gui.py
+      - name: electron-builder 打包（nsis 安装包 + 绿色 zip）
+        working-directory: electron
+        run: npx electron-builder --win --x64
 
-      # 如果目标电脑既没 Chrome 也没 Edge，把下面取消注释（产物会多 ~150MB）：
-      # - name: 下载 Chromium 内核
-      #   run: python -m playwright install chromium
+      - name: 列出产物
+        shell: bash
+        run: ls -la electron/release/*.exe electron/release/*.zip 2>/dev/null
 
-      - name: 打 zip
-        shell: pwsh
-        run: |
-          $zipName = "DouyinCommentMiner-windows-${{ github.ref_name }}.zip"
-          if (Test-Path $zipName) { Remove-Item $zipName }
-          Compress-Archive -Path dist/DouyinCommentMiner -DestinationPath $zipName
-          Get-Item $zipName | Format-List Name, Length
-
-      - name: 上传 zip 给 release job
+      - name: 上传产物给 release job
         uses: actions/upload-artifact@v4
         with:
-          name: windows-zip
-          path: DouyinCommentMiner-windows-*.zip
+          name: windows-packages
+          path: |
+            electron/release/TingChao-windows-*.exe
+            electron/release/TingChao-windows-*.zip
           if-no-files-found: error
 
-      # 注：上传 zip 到 server 改由本地 rsync 完成（GitHub Actions runner 到国内云服务器网络不稳）
-
   # ============================================================
-  #  2. macOS 打包：产出 .app bundle
+  #  2. macOS：双架构 dmg + zip（Apple Silicon 与 Intel）
   # ============================================================
   build-macos:
     runs-on: macos-latest
@@ -101,76 +97,41 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 安装依赖（清华 pip 镜像 + 阿里云 fallback，国内 CI 友好）
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: 安装 Python 依赖
         run: |
           python -m pip install --upgrade pip -i https://pypi.tuna.tsinghua.edu.cn/simple
           python -m pip install \
             --index-url https://pypi.tuna.tsinghua.edu.cn/simple \
             --extra-index-url https://mirrors.aliyun.com/pypi/simple/ \
             --extra-index-url https://pypi.org/simple \
-            playwright openpyxl customtkinter pyinstaller requests \
-            pystray Pillow \
-            cairosvg
+            -r requirements.txt pyinstaller
 
-      - name: L2 资产生成（PNG / ICO / ICNS）
-        run: |
-          python tools/build_assets.py --src "/Users/runner/work/_temp/听潮-切图-多彩数据版/logo" || \
-          python tools/build_assets.py || \
-          echo "[warn] build_assets.py 失败，但产物已入仓，继续打包"
+      - name: 安装前端依赖
+        working-directory: electron
+        run: npm ci --no-audit --no-fund
 
-      - name: PyInstaller · onedir · windowed
-        run: |
-          python -m PyInstaller --noconfirm --clean \
-            --name DouyinCommentMiner \
-            --windowed \
-            --onedir \
-            --paths . \
-            --collect-all playwright \
-            --collect-all openpyxl \
-            --collect-all customtkinter \
-            --collect-all requests \
-            --collect-all pystray \
-            --collect-all PIL \
-            --hidden-import openpyxl \
-            --hidden-import requests \
-            --hidden-import license \
-            --hidden-import server_url \
-            --hidden-import updater \
-            --hidden-import pystray._osx \
-            --add-data "desktop/assets:desktop/assets" \
-            --icon desktop/assets/app.icns \
-            --osx-bundle-identifier com.douyinminer.tidesignal \
-            douyin_miner_gui.py
+      - name: 打 sidecar
+        run: bash ./build_sidecar.sh
 
-      # 同上：纯裸机没装 Chrome/Edge 时取消注释：
-      # - name: 下载 Chromium 内核
-      #   run: python -m playwright install chromium
+      - name: electron-builder 打包（arm64 + x64 的 dmg 与 zip）
+        working-directory: electron
+        run: npx electron-builder --mac --arm64 --x64
 
-      - name: 打 zip（加包裹层，跟 Windows 对齐）
-        run: |
-          ZIPNAME="DouyinCommentMiner-macOS-${{ github.ref_name }}.zip"
-          cd dist
-          # 加一层包裹：dist/DouyinCommentMiner/DouyinCommentMiner.app/
-          # 这样 updater 解压后能用 install_root/DouyinCommentMiner/DouyinCommentMiner.app 路径定位
-          mkdir -p DouyinCommentMiner
-          mv DouyinCommentMiner.app DouyinCommentMiner/
-          # 排除 macOS 垃圾文件（避免升级包混入 .DS_Store）
-          zip -r "../$ZIPNAME" DouyinCommentMiner \
-              -x "**/.DS_Store" "**/__MACOSX/*" "**/.git/*"
-          cd ..
-          ls -la "$ZIPNAME"
-
-      - name: 上传 zip 给 release job
+      - name: 上传产物给 release job
         uses: actions/upload-artifact@v4
         with:
-          name: macos-zip
-          path: DouyinCommentMiner-macOS-*.zip
+          name: macos-packages
+          path: |
+            electron/release/TingChao-macos-*.dmg
+            electron/release/TingChao-macos-*.zip
           if-no-files-found: error
 
-      # 注：上传 zip 到 server 改由本地 rsync 完成（GitHub Actions runner 到国内云服务器网络不稳）
-
   # ============================================================
-  #  3. 汇总 Release：等上面两个都跑完，把 zip 附到同一个 release
+  #  3. 汇总到同一个 GitHub Release
   # ============================================================
   release:
     needs: [build-windows, build-macos]
@@ -178,19 +139,16 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          pattern: '*-zip'
+          pattern: '*-packages'
           path: artifacts
           merge-multiple: true
 
-      - name: 列一下下载下来的文件
+      - name: 列出全部产物
         run: ls -la artifacts/
 
-      - name: 创建 Release 并上传所有 zip
+      - name: 创建 Release 并附上所有安装包
         uses: softprops/action-gh-release@v2
         with:
-          files: artifacts/*.zip
+          files: artifacts/*
           generate_release_notes: true
           fail_on_unmatched_files: true
-
-      # 注：build-windows / build-macos job 已经把 zip 上传到服务器并写好 latest_version，
-      # 这里不用重复做。

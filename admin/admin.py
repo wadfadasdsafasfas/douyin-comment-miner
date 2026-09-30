@@ -28,6 +28,31 @@ app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 
 
+class StripPrefixMiddleware:
+    """模板里的资源与链接统一带 /admin 前缀（配合 nginx 按 /admin 反代），
+    而路由注册时不带前缀。这里在 ASGI 层剥掉前缀，使后台在
+    「直连 :8501」和「经 nginx /admin 访问」两种方式下都能正常打开。
+    不加这层的话：/admin/static/*.css 与 /admin/users 都会 404，页面变成无样式裸 HTML。"""
+    PREFIX = "/admin"
+
+    def __init__(self, inner_app):
+        self.app = inner_app
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "http":
+            path = scope.get("path", "")
+            if path == self.PREFIX or path.startswith(self.PREFIX + "/"):
+                stripped = path[len(self.PREFIX):] or "/"
+                scope["path"] = stripped
+                scope["raw_path"] = stripped.encode("utf-8")
+                # 注意：这里不要设置 scope["root_path"]。Starlette 的 get_route_path()
+                # 会再按 root_path 剥一次，导致 StaticFiles 挂载点匹配不上而 404。
+        await self.app(scope, receive, send)
+
+
+app.add_middleware(StripPrefixMiddleware)
+
+
 # ---------- 后端调用 ----------
 def api_get(path: str, token: str | None = None):
     headers = {"X-Admin-Token": token} if token else {}
