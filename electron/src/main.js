@@ -26,6 +26,12 @@ const state = {
 const log = (...a) => console.log('[听潮]', ...a);
 const warn = (...a) => console.warn('[听潮]', ...a);
 
+/* 应用安装根目录：mac 为 .app 的父目录，win 为 exe 所在目录 */
+function appInstallRoot() {
+  const exeDir = path.dirname(app.getPath('exe'));
+  return process.platform === 'darwin' ? path.resolve(exeDir, '..', '..') : exeDir;
+}
+
 /* ---------------------------------------------------------------- sidecar */
 function sidecarSpec() {
   if (IS_DEV) {
@@ -56,7 +62,13 @@ function startSidecar() {
     try {
       child = spawn(cmd, args, {
         cwd,
-        env: Object.assign({}, process.env, { PYTHONUNBUFFERED: '1', PYTHONIOENCODING: 'utf-8' }),
+        env: Object.assign({}, process.env, {
+          PYTHONUNBUFFERED: '1',
+          PYTHONIOENCODING: 'utf-8',
+          // 供 sidecar 的自升级逻辑定位"要替换哪个目录"，并知道宿主 PID 以便等它退出
+          TC_APP_ROOT: appInstallRoot(),
+          TC_HOST_PID: String(process.pid),
+        }),
         stdio: ['ignore', 'pipe', 'pipe'],
         windowsHide: true,
       });
@@ -254,7 +266,17 @@ function buildAppMenu() {
 /* ---------------------------------------------------------------- IPC */
 ipcMain.handle('tc:notify', (e, { title, body }) => { notify(String(title || '听潮'), String(body || '')); return true; });
 ipcMain.handle('tc:open-external', (e, url) => { if (/^https?:\/\//.test(String(url))) shell.openExternal(url); return true; });
-ipcMain.handle('tc:platform', () => ({ platform: process.platform, version: app.getVersion(), dev: IS_DEV }));
+ipcMain.handle('tc:platform', () => ({
+  platform: process.platform, version: app.getVersion(), dev: IS_DEV,
+  appRoot: appInstallRoot(), hostPid: process.pid,
+}));
+// 自升级：更新器在等这个进程退出后才会替换文件
+ipcMain.handle('tc:quit-for-update', () => {
+  log('为安装更新而退出');
+  state.quitting = true;
+  setTimeout(() => app.quit(), 150);
+  return true;
+});
 
 /* ---------------------------------------------------------------- 生命周期 */
 const gotLock = app.requestSingleInstanceLock();

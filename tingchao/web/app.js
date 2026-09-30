@@ -490,13 +490,71 @@ async function renderSettings() {
   btn.innerHTML = '<svg class="tc-icon"><use href="/assets/icons/sprite.svg#tc-settings"/></svg>编辑抓取配置';
   btn.onclick = () => $('#btn-config').click();
 }
-$('#btn-check-update').onclick = async () => {
+/* ---------------------------------------------------------------- 自升级 */
+let hostInfo = { appRoot: '', hostPid: 0 };
+if (bridge && bridge.platform) bridge.platform().then(i => { hostInfo = i || hostInfo; }).catch(() => {});
+
+function updateModal(title, sub, btnText, onBtn) {
+  let ov = $('#ov-update');
+  if (!ov) {
+    ov = document.createElement('div');
+    ov.className = 'tc-overlay hidden';
+    ov.id = 'ov-update';
+    ov.innerHTML = `<div class="tc-modal" style="max-width:440px">
+      <div class="tc-modal-head"><div><div class="tc-modal-title" id="up-t"></div><div class="tc-modal-sub" id="up-s"></div></div></div>
+      <div class="tc-modal-body"><div class="tc-progress" style="margin-top:6px"><i id="up-bar" style="width:0%"></i></div></div>
+      <div class="tc-modal-foot"><button class="tc-btn tc-btn-ghost" data-close>稍后</button>
+      <button class="tc-btn tc-btn-primary" id="up-btn"></button></div></div>`;
+    document.body.appendChild(ov);
+    ov.addEventListener('mousedown', e => { if (e.target === ov) ov.classList.add('hidden'); });
+    ov.querySelector('[data-close]').onclick = () => ov.classList.add('hidden');
+  }
+  $('#up-t').textContent = title;
+  $('#up-s').textContent = sub;
+  const b = $('#up-btn');
+  b.textContent = btnText || '确定';
+  b.style.display = btnText ? '' : 'none';
+  b.onclick = onBtn || null;
+  $('#up-bar').style.width = '0%';
+  ov.classList.remove('hidden');
+  return { close: () => ov.classList.add('hidden'), bar: p => { $('#up-bar').style.width = p + '%'; } };
+}
+
+async function checkUpdate(manual) {
+  let r;
+  try { r = await api('/api/update/info'); }
+  catch (e) { if (manual) toast(e.message, 'err'); return; }
+  if (!r.has_update) { if (manual) toast(`已是最新版本 v${r.current}`); return; }
+  updateModal(`发现新版本 v${r.latest}`, r.notes || '正在准备更新…', '立即下载并安装', startUpdate);
+}
+
+async function startUpdate() {
+  const m = updateModal('正在下载更新', '下载完成后会自动安装并重启', null);
   try {
-    const r = await api('/api/update/check');
-    if (r.has_update) toast(`发现新版本 v${r.info.version}，请到后台下载更新`);
-    else toast(`已是最新版本 v${r.current}`);
-  } catch (e) { toast(e.message, 'err'); }
-};
+    await api('/api/update/download', { method: 'POST' });
+  } catch (e) { m.close(); toast(e.message, 'err'); return; }
+  const timer = setInterval(async () => {
+    let s;
+    try { s = await api('/api/update/state'); } catch (e) { return; }
+    m.bar(s.progress || 0);
+    if (s.stage === 'ready') {
+      clearInterval(timer);
+      m.close();
+      updateModal('下载完成', '即将安装并重启听潮，全过程约 10 秒', '立即安装并重启', doInstall);
+    } else if (s.stage === 'error') {
+      clearInterval(timer); m.close(); toast(s.error || '更新包下载失败', 'err');
+    }
+  }, 700);
+}
+
+async function doInstall() {
+  const m = updateModal('正在安装', '应用即将自动重启…', null);
+  try {
+    await api('/api/update/install', { method: 'POST', body: { app_root: hostInfo.appRoot, host_pid: hostInfo.hostPid } });
+    if (bridge && bridge.quitForUpdate) { await bridge.quitForUpdate(); }
+    else { toast('请在应用退出后手动重启以完成升级'); m.close(); }
+  } catch (e) { m.close(); toast(e.message, 'err'); }
+}
 
 /* ---------------------------------------------------------------- 与 Electron 壳桥接 */
 const bridge = window.tingchao || null;      // 浏览器里调试时为 null，全部降级为 no-op
@@ -518,3 +576,8 @@ if (bridge && bridge.on) {
 }
 
 boot();
+// 启动后静默检查一次更新；设置页按钮为手动检查
+setTimeout(() => checkUpdate(false), 1500);
+document.addEventListener('click', e => {
+  if (e.target && e.target.closest && e.target.closest('#btn-check-update')) checkUpdate(true);
+});

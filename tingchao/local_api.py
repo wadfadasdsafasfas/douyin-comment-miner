@@ -10,7 +10,10 @@ from __future__ import annotations
 import argparse
 import asyncio
 import json
+import os
 import queue
+import subprocess
+import sys
 import threading
 from datetime import datetime
 from pathlib import Path
@@ -21,7 +24,7 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from tingchao import crawler, leads_db
+from tingchao import crawler, leads_db, updater
 from license import License
 
 WEB_DIR = Path(__file__).parent / "web"
@@ -249,6 +252,87 @@ def tasks(limit: int = 10):
     return {"items": leads_db.recent_tasks(limit)}
 
 
+# ---------------------------------------------------------------- 自升级
+
+UPD = {"stage": "idle", "progress": 0, "error": "", "zip": "", "info": None}
+UPDATE_DIR = Path.home() / ".tingchao" / "updates"
+
+
+def _update_url(info: dict) -> str:
+    key = "macos_url" if sys.platform == "darwin" else "windows_url"
+    return (info or {}).get(key) or ""
+
+
+@app.get("/api/update/info")
+def update_info():
+    info, has, reason = lic.check_update()
+    UPD["info"] = info
+    url = _update_url(info or {})
+    return {"has_update": bool(has and url), "reason": reason, "current": lic.client_version(),
+            "latest": (info or {}).get("version", ""), "notes": (info or {}).get("release_notes", ""),
+            "url": url, "size_mb": (info or {}).get("size_mb", 0)}
+
+
+class UpdateInstallIn(BaseModel):
+    app_root: str = ""
+    host_pid: int = 0
+
+
+@app.post("/api/update/download")
+def update_download():
+    info, has, _ = lic.check_update()
+    url = _update_url(info or {})
+    if not url:
+        raise HTTPException(400, "服务端未配置本平台的更新包地址")
+    if UPD["stage"] == "downloading":
+        return {"ok": True, "msg": "已在下载中"}
+
+    UPD.update(stage="downloading", progress=0, error="", zip="")
+
+    def cb(done, total):
+        UPD["progress"] = round(done * 100 / total) if total else 0
+
+    def worker():
+        try:
+            p = updater.download(url, UPDATE_DIR, cb)
+            ok, layout, err = updater.verify_zip(p)
+            if not ok:
+                UPD.update(stage="error", error=err)
+                return
+            UPD.update(stage="ready", progress=100, zip=str(p))
+        except Exception as e:
+            UPD.update(stage="error", error=f"{type(e).__name__}: {e}")
+
+    threading.Thread(target=worker, daemon=True).start()
+    return {"ok": True, "msg": "开始下载"}
+
+
+@app.get("/api/update/state")
+def update_state():
+    return {k: v for k, v in UPD.items() if k != "info"}
+
+
+@app.post("/api/update/install")
+def update_install(body: UpdateInstallIn):
+    """拉起分离子进程执行替换，随后由壳退出、更新器重启新版。"""
+    if UPD["stage"] != "ready" or not UPD["zip"]:
+        raise HTTPException(400, "更新包尚未下载完成")
+    app_root = body.app_root or os.environ.get("TC_APP_ROOT", "")
+    if not app_root or not Path(app_root).exists():
+        raise HTTPException(400, "无法定位应用安装目录，请手动覆盖安装")
+    me = sys.executable
+    args = [me, "--apply-update", UPD["zip"], app_root]
+    if body.host_pid:
+        args += ["--wait-pid", str(body.host_pid)]
+    flags = 0
+    if sys.platform == "win32":
+        flags = getattr(subprocess, "DETACHED_PROCESS", 0) | getattr(subprocess, "CREATE_NEW_PROCESS_GROUP", 0)
+    subprocess.Popen(args, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                     stdin=subprocess.DEVNULL, creationflags=flags, start_new_session=(sys.platform != "win32"))
+    UPD["stage"] = "installing"
+    return {"ok": True, "msg": "正在安装，应用即将重启"}
+
+
 # ---------------------------------------------------------------- 静态 UI
 # 前端资源走 /assets/*（Electron 与浏览器调试同源加载，免 CORS）；
 # index.html 由 "/" 直接返回，pywebview/浏览器/Electron 都只认这一个入口。
@@ -277,6 +361,10 @@ def _free_port() -> int:
 
 
 def main():
+    # 更新器模式：<sidecar> --apply-update <zip> <app_root> [--wait-pid N]
+    if "--apply-update" in sys.argv:
+        raise SystemExit(updater.run_cli(sys.argv[1:]))
+
     import uvicorn
     ap = argparse.ArgumentParser()
     ap.add_argument("--port", type=int, default=0, help="0 = 自动选空闲端口")

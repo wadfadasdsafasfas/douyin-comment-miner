@@ -45,10 +45,12 @@ mkdir -p dist-sidecar
   --hidden-import tingchao.local_api \
   --hidden-import tingchao.crawler \
   --hidden-import tingchao.leads_db \
+  --hidden-import tingchao.updater \
   --hidden-import douyin_miner \
   --hidden-import license \
   --hidden-import server_url \
   --add-data "$PWD/tingchao/web${SEP}tingchao/web" \
+  --add-data "$PWD/tingchao/updater.py${SEP}tingchao" \
   --add-data "$PWD/server_url.py${SEP}." \
   --add-data "$PWD/douyin_miner.py${SEP}." \
   --add-data "$PWD/license.py${SEP}." \

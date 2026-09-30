@@ -16,6 +16,8 @@ contextBridge.exposeInMainWorld('tingchao', {
   notify: (title, body) => ipcRenderer.invoke('tc:notify', { title, body }),
   /** 用系统浏览器打开外链 */
   openExternal: url => ipcRenderer.invoke('tc:open-external', url),
-  /** 运行环境信息 */
+  /** 运行环境信息（含安装目录与宿主 PID，供自升级使用） */
   platform: () => ipcRenderer.invoke('tc:platform'),
+  /** 自升级：请求主进程退出，让更新器完成文件替换 */
+  quitForUpdate: () => ipcRenderer.invoke('tc:quit-for-update'),
 });
