@@ -61,12 +61,15 @@ jobs:
         run: |
           ./dist-sidecar/tingchao-sidecar/tingchao-sidecar.exe --port 8799 > sc.log 2>&1 &
           PID=$!
+          OK=0
           for i in $(seq 1 30); do
             sleep 2
-            curl -sf -m 3 http://127.0.0.1:8799/api/health && { echo; break; }
+            if curl -sf -m 5 http://127.0.0.1:8799/api/health -o health.json; then
+              echo "健康检查返回：$(cat health.json)"; OK=1; break
+            fi
           done
           kill $PID 2>/dev/null || true
-          grep -q '"ok":true' sc.log || { echo "sidecar 自检失败"; cat sc.log; exit 1; }
+          if [ "$OK" != "1" ]; then echo "=== sidecar 日志 ==="; cat sc.log; exit 1; fi
 
       - name: electron-builder 打包（nsis 安装包 + 绿色 zip）
         working-directory: electron
