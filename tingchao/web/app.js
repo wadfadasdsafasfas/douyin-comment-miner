@@ -38,6 +38,9 @@ const displayVersion = v => {
   return p.length >= 2 ? `V${p[0]}.${p[1]}` : (v ? `V${v}` : '');
 };
 const BRAND_VENDOR = '层峰科技';
+// preload 暴露的原生桥（浏览器里调试时为 null，全部降级为 no-op）
+// 必须在任何顶层使用之前声明，否则 const TDZ 直接把整个脚本打死 → 白屏
+const bridge = window.tingchao || null;
 const PLAT_CN = { douyin: '抖音', xhs: '小红书', wechat: '视频号' };
 const STATUS_CN = { new: '待联系', contacted: '已联系', replied: '已回复', won: '已成交', invalid: '无效' };
 const STATUS_CLS = { new: 'tc-pill-warning', contacted: 'tc-pill-neutral', replied: 'tc-pill-success', won: 'tc-pill-success', invalid: 'tc-pill-danger' };
@@ -565,7 +568,6 @@ async function doInstall() {
 }
 
 /* ---------------------------------------------------------------- 与 Electron 壳桥接 */
-const bridge = window.tingchao || null;      // 浏览器里调试时为 null，全部降级为 no-op
 const nativeNotify = (title, body) => { if (bridge && bridge.notify) bridge.notify(title, body).catch(() => {}); };
 
 // 标记操作系统：CSS 据此给 macOS 红绿灯留出顶栏位置
