@@ -129,3 +129,13 @@ bash tools/parallel-artifact-get.sh <runId> <artifactId> <sizeInBytes> [段数]
 - 成本：存储 ~0.1 元/GB/月，外网流出 ~0.5 元/GB
 - 腾讯云的「主账号 ID」是 UIN（100028693851），建桶要用的 APPID 是另一个数
   （1315442697），用 CAM `GetUserAppId` 查，别拿 UIN 拼桶名（会 AccessDenied）
+
+## macOS「已损坏」问题与签名路线
+
+未签名（或签名与 CodeResources 不一致）的 App 一旦带上浏览器下载的
+`com.apple.quarantine`，macOS 直接判「已损坏，无法打开」，右键打开无效。
+已做两件事缓解：① electron-builder `afterSign` 钩子（`scripts/adhoc-sign.js`）
+做一致的 ad-hoc 深签名；② 官网帮助区给出 `xattr -rd com.apple.quarantine`
+命令。彻底解决 = 加入 Apple Developer Program（$99/年），CI 里用
+Developer ID Application 证书签名 + `xcrun notarytool submit` 公证 +
+`stapler staple` 装订，之后用户双击即开、不再弹任何提示。
