@@ -118,3 +118,14 @@ bash tools/parallel-artifact-get.sh <runId> <artifactId> <sizeInBytes> [段数]
 上传前务必核对绿色包里的 `resources/sidecar/tingchao-sidecar/_internal/tingchao/web/app.js`
 是否含本次改动，别把上一版制品当新版传上线。
 
+## 安装包分发走腾讯云 COS（2026-10 起）
+
+服务器出口只有 ~4Mbps（实测 481KB/s 顶格），官网直发安装包用户要下十几分钟。
+现在包放在腾讯云 COS：桶 `tingchao-downloads-1315442697`（ap-beijing，标准存储，公开读）。
+
+- 发布：`python3 tools/publish-to-cos.py`（密钥在 /tmp/.cos_keys，600）
+- 后台 `/api/latest` 的 `downloads.windows/macos` 与官网按钮都指向 COS；
+  服务器 `/opt/app/downloads/` 留一份备份
+- 成本：存储 ~0.1 元/GB/月，外网流出 ~0.5 元/GB
+- 腾讯云的「主账号 ID」是 UIN（100028693851），建桶要用的 APPID 是另一个数
+  （1315442697），用 CAM `GetUserAppId` 查，别拿 UIN 拼桶名（会 AccessDenied）
