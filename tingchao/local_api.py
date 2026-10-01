@@ -6,6 +6,7 @@
 启动：python -m tingchao.local_api --port 0   （0 = 随机端口，由壳读取）
 """
 from __future__ import annotations
+import platform
 
 import argparse
 import asyncio
@@ -259,8 +260,19 @@ UPDATE_DIR = Path.home() / ".tingchao" / "updates"
 
 
 def _update_url(info: dict) -> str:
+    """后台只存一条 macos_url，但 mac 有 arm64 / x64 两种包；按本机架构纠正后缀。"""
     key = "macos_url" if sys.platform == "darwin" else "windows_url"
-    return (info or {}).get(key) or ""
+    url = (info or {}).get(key) or ""
+    if sys.platform != "darwin" or not url:
+        return url
+    arch = "x64" if platform.machine().lower() in ("x86_64", "amd64") else "arm64"
+    other = "arm64" if arch == "x64" else "x64"
+    if f"-{other}" in url:
+        url = url.replace(f"-{other}", f"-{arch}")
+    elif "-universal" not in url and f"-{arch}" not in url:
+        # URL 里没带架构标记时，插一个，保证 Intel / Apple Silicon 各取所需
+        url = url.replace(".zip", f"-{arch}.zip").replace(".dmg", f"-{arch}.dmg")
+    return url
 
 
 @app.get("/api/update/info")

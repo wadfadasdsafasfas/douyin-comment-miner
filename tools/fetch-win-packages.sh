@@ -7,7 +7,6 @@ OUT=/tmp/winrelay
 SSHPASS_FILE=/tmp/.tc_pw
 SERVER=root@117.72.28.123
 LOG=/tmp/winrelay.status
-
 # 自动取最近一次成功构建的 windows-packages 制品（免得手改 ID 和字节数）
 cd "$DIR"
 RUN=$(gh run list --workflow=build-release.yml --limit 1 --json databaseId,status,conclusion \
@@ -45,7 +44,8 @@ SIZE=$(stat -f%z "$ZIP" 2>/dev/null || echo 0)
 if [ "$SIZE" -lt "$EXPECTED" ]; then kill $DL 2>/dev/null; say "超时：仍只有 $SIZE bytes，放弃"; exit 1; fi
 
 # 2) 解包
-mkdir -p "$OUT"; rm -rf "$OUT"/* 2>/dev/null
+OUT="/tmp/winrelay-$RUN"   # 每次 run 用独立目录，产物天然干净，不需要清理步骤
+mkdir -p "$OUT"
 unzip -oq "$ZIP" -d "$OUT" || { say "解包失败"; exit 1; }
 SETUP=$(find "$OUT" -maxdepth 1 -name "*-setup.exe" | head -1)
 PORT=$(find "$OUT" -maxdepth 1 -name "*.zip" ! -name "winpkg.zip" | head -1)
