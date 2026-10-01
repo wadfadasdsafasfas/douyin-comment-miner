@@ -102,3 +102,19 @@ CI 里在 `build-release.yml` 增加两步即可：PyInstaller 打 sidecar → e
 4. **HTTPS**：`server_url.py` 仍是 `http://117.72.28.123`，token 明文传输，上线前必须补证书。
 5. **`deploy/douyin-auth-admin.service` 仍写着 Streamlit**，而 admin 早就是 FastAPI，
    按该 unit 部署会起错进程，需改成 uvicorn 启动。
+
+## Windows 制品接力（国内服务器 → GitHub 限速的解法）
+
+CI 出包后，制品要从 GitHub 拉回本地再传到服务器。单条 curl 只能跑到 ~56KB/s（297MB 要一个多小时）。
+Actions 制品的重定向地址指向 Azure Blob，支持 `Range`（返回 206），所以切成 6 段并行下载即可：
+
+```bash
+bash tools/parallel-artifact-get.sh <runId> <artifactId> <sizeInBytes> [段数]
+# 例：bash tools/parallel-artifact-get.sh 36813956256 11140308096 297423330 6
+```
+
+实测 297MB / 16 分钟（约 310KB/s），合并后 `unzip -tq` 校验通过再上传。
+签名地址每次重新解析，避免 SAS 过期；分片断点续传靠 `-C -` 加 `-r 起点-终点`。
+上传前务必核对绿色包里的 `resources/sidecar/tingchao-sidecar/_internal/tingchao/web/app.js`
+是否含本次改动，别把上一版制品当新版传上线。
+
