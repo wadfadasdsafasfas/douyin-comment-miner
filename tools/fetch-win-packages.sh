@@ -3,12 +3,28 @@
 # 用法：nohup bash tools/fetch-win-packages.sh > /tmp/winrelay.log 2>&1 &
 set -u
 DIR="$(cd "$(dirname "$0")/.." && pwd)"
-ZIP=/tmp/winpkg.zip
 OUT=/tmp/winrelay
 SSHPASS_FILE=/tmp/.tc_pw
 SERVER=root@117.72.28.123
-EXPECTED=297424245          # CI 报告的制品字节数，用于判断下载是否完整
 LOG=/tmp/winrelay.status
+
+# 自动取最近一次成功构建的 windows-packages 制品（免得手改 ID 和字节数）
+cd "$DIR"
+RUN=$(gh run list --workflow=build-release.yml --limit 1 --json databaseId,status,conclusion \
+      --jq '.[0]|select(.status=="completed" and .conclusion=="success")|.databaseId' 2>/dev/null | head -1)
+[ -z "$RUN" ] && RUN=$(gh run list --workflow=build-release.yml --limit 1 --json databaseId --jq '.[0].databaseId' 2>/dev/null)
+META=$(gh api "repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/runs/$RUN/artifacts" \
+       --jq '.artifacts[]|select(.name=="windows-packages")|"\(.id) \(.size_in_bytes)"' 2>/dev/null | head -1)
+AID=$(echo "$META" | awk '{print $1}'); EXPECTED=$(echo "$META" | awk '{print $2}')
+[ -z "$AID" ] && { echo "找不到 windows-packages 制品（CI 可能还没跑完）"; exit 1; }
+ZIP=/tmp/winpkg-$RUN.zip
+echo "run=$RUN artifact=$AID size=$EXPECTED"
+
+TOK=$(gh auth token)
+nohup curl -sL -C - --retry 20 --retry-delay 5 --retry-all-errors -H "Authorization: Bearer $TOK" \
+  -o "$ZIP" "https://api.github.com/repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/actions/artifacts/$AID/zip" \
+  > /dev/null 2>&1 &
+DL=$!
 
 say(){ echo "[$(date +%H:%M:%S)] $*" | tee -a "$LOG"; }
 
@@ -26,7 +42,7 @@ for i in $(seq 1 320); do
 done
 
 SIZE=$(stat -f%z "$ZIP" 2>/dev/null || echo 0)
-if [ "$SIZE" -lt "$EXPECTED" ]; then say "超时：仍只有 $SIZE bytes，放弃"; exit 1; fi
+if [ "$SIZE" -lt "$EXPECTED" ]; then kill $DL 2>/dev/null; say "超时：仍只有 $SIZE bytes，放弃"; exit 1; fi
 
 # 2) 解包
 mkdir -p "$OUT"; rm -rf "$OUT"/* 2>/dev/null
@@ -36,6 +52,7 @@ PORT=$(find "$OUT" -maxdepth 1 -name "*.zip" ! -name "winpkg.zip" | head -1)
 [ -z "$SETUP" ] && { say "找不到 setup.exe"; ls -la "$OUT"; exit 1; }
 say "setup: $(basename "$SETUP")  $(stat -f%z "$SETUP") bytes"
 say "portable 源: ${PORT:-未找到}"
+kill $DL 2>/dev/null || true
 
 # 3) 规范命名，与官网链接和 windows_url 对齐
 cp -f "$SETUP" "$OUT/TingChao-windows-v1.0.0-setup.exe"
