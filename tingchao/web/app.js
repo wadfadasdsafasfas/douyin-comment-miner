@@ -37,6 +37,7 @@ const displayVersion = v => {
   const p = String(v || '').split('.');
   return p.length >= 2 ? `V${p[0]}.${p[1]}` : (v ? `V${v}` : '');
 };
+const BRAND_VENDOR = '层峰科技';
 const PLAT_CN = { douyin: '抖音', xhs: '小红书', wechat: '视频号' };
 const STATUS_CN = { new: '待联系', contacted: '已联系', replied: '已回复', won: '已成交', invalid: '无效' };
 const STATUS_CLS = { new: 'tc-pill-warning', contacted: 'tc-pill-neutral', replied: 'tc-pill-success', won: 'tc-pill-success', invalid: 'tc-pill-danger' };
@@ -49,7 +50,7 @@ async function boot() {
   try {
     const h = await api('/api/health');
     $('#srv-dot').style.background = 'var(--tc-teal)';
-    $('#srv-text').textContent = `本地服务在线 · v${h.version}`;
+    $('#srv-text').textContent = `本地服务在线 · ${displayVersion(h.version)}`;
   } catch (e) {
     $('#srv-dot').style.background = 'var(--tc-brand)';
     $('#srv-text').textContent = '连不上本地服务，请重启应用';
@@ -77,7 +78,8 @@ function renderMe() {
   const m = S.me || {};
   $('#top-user').textContent = m.username || '—';
   $('#top-av').textContent = (m.username || '?').slice(0, 1).toUpperCase();
-  $('#side-ver').textContent = `${displayVersion(m.version)} · ${m.server_url || ''}`;
+  // 侧栏只露出品方；授权服务器地址收进「系统设置」，不对终端用户展示
+  $('#side-ver').textContent = `${displayVersion(m.version)} · ${BRAND_VENDOR}`;
   const days = m.days_left;
   $('#quota-days').textContent = days == null ? '永久' : `${days} 天`;
   $('#quota-exp').textContent = m.expires_at ? `到期 ${String(m.expires_at).slice(0, 10)}` : '—';
@@ -488,6 +490,7 @@ async function renderSettings() {
     <div class="info-row"><span>本机设备名</span><b>${esc(m.device_name || '—')}</b></div>
     <div class="info-row"><span>授权服务器</span><b>${esc(m.server_url || '—')}</b></div>
     <div class="info-row"><span>客户端版本</span><b>${esc(displayVersion(m.version))}</b></div>
+    <div class="info-row"><span>出品方</span><b>${BRAND_VENDOR}</b></div>
     <div class="info-row"><span>采集平台</span><b>${esc(platName(c.platform || 'douyin'))}</b></div>
     <div class="tc-field" style="margin-top:18px"><label class="tc-label">抓取配置</label>
       <div class="cfg-hint">平台、链接、关键词、时间范围与抓取深度在弹窗里编辑。</div></div>`;

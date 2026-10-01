@@ -264,6 +264,7 @@
   background:var(--tc-surface-2);border:1px solid var(--tc-line);padding:5px 12px;border-radius:var(--tc-r-full);margin-bottom:26px}
 .tc-server-chip .tc-dot{width:7px;height:7px;border-radius:50%;background:var(--tc-teal)}
 .tc-login-foot{text-align:center;margin-top:24px;font-size:var(--tc-fs-13);color:var(--tc-ink-3)}
+.tc-login-brandline{text-align:center;margin-top:14px;font-size:var(--tc-fs-12);color:var(--tc-ink-3);letter-spacing:.02em}
 .tc-link{color:var(--tc-brand-ink);font-weight:600;cursor:pointer}
 
 /* ---------- 12. Logo ---------- */
