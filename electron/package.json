@@ -21,10 +21,19 @@
   "build": {
     "appId": "cn.cengfeng.tingchao",
     "productName": "听潮",
-    "directories": { "output": "release", "buildResources": "build" },
-    "files": ["src/**/*", "package.json"],
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
     "extraResources": [
-      { "from": "../dist-sidecar/tingchao-sidecar", "to": "sidecar/tingchao-sidecar" }
+      {
+        "from": "../dist-sidecar/tingchao-sidecar",
+        "to": "sidecar/tingchao-sidecar"
+      }
     ],
     "asar": true,
     "electronDownload": {
@@ -33,19 +42,46 @@
     "mac": {
       "category": "public.app-category.business",
       "target": [
-        { "target": "dmg", "arch": ["arm64", "x64"] },
-        { "target": "zip", "arch": ["arm64", "x64"] }
+        {
+          "target": "dmg",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.icns",
       "identity": null,
       "artifactName": "TingChao-macos-v${version}-${arch}.${ext}",
-      "extendInfo": { "LSUIElement": false, "NSMicrophoneUsageDescription": "本应用不使用麦克风" }
+      "extendInfo": {
+        "LSUIElement": false,
+        "NSMicrophoneUsageDescription": "本应用不使用麦克风"
+      }
     },
-    "dmg": { "artifactName": "TingChao-macos-v${version}-${arch}.dmg" },
+    "dmg": {
+      "artifactName": "TingChao-macos-v${version}-${arch}.dmg"
+    },
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "zip", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "build/icon.ico",
       "artifactName": "TingChao-windows-v${version}-${arch}.${ext}"
@@ -56,6 +92,7 @@
       "createDesktopShortcut": true,
       "shortcutName": "听潮",
       "artifactName": "TingChao-windows-v${version}-setup.exe"
-    }
+    },
+    "afterSign": "scripts/adhoc-sign.js"
   }
 }
