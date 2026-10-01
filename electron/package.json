@@ -3,7 +3,7 @@
   "productName": "听潮",
   "version": "1.0.0",
   "description": "听潮 TideSignal · 多平台评论监控与线索挖掘",
-  "author": "合智云数",
+  "author": "层峰科技",
   "license": "UNLICENSED",
   "private": true,
   "main": "src/main.js",
@@ -19,7 +19,7 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "cn.heishi.tingchao",
+    "appId": "cn.cengfeng.tingchao",
     "productName": "听潮",
     "directories": { "output": "release", "buildResources": "build" },
     "files": ["src/**/*", "package.json"],

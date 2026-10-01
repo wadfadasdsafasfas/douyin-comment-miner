@@ -528,7 +528,7 @@ class App(ctk.CTk):
         self.b_trial.pack(side="left", padx=(4, 0))
 
         # 版本号底部
-        ctk.CTkLabel(right, text="v1.4 · 合智云数",
+        ctk.CTkLabel(right, text="V1.0 · 层峰科技",
                      text_color=INK3, font=ctk.CTkFont(size=10)).place(
             relx=0.5, rely=0.96, anchor="center")
 
@@ -1065,7 +1065,7 @@ class App(ctk.CTk):
                      text_color=INK3, font=ctk.CTkFont(size=11)).pack(
             anchor="w", padx=14, pady=(8, 14))
 
-        ctk.CTkLabel(self.side, text="v1.5 · 合智云数",
+        ctk.CTkLabel(self.side, text="V1.0 · 层峰科技",
                      text_color=INK3, font=ctk.CTkFont(size=10)).pack(side="bottom", pady=12)
 
         # =================== 主区（侧栏右） ===================

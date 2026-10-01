@@ -32,6 +32,11 @@ function toast(msg, kind = 'ok') {
 
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g,
   c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// 对外统一显示为 V1.0 这种两段式；内部版本号仍是 1.0.0（升级比较要用完整语义化版本）
+const displayVersion = v => {
+  const p = String(v || '').split('.');
+  return p.length >= 2 ? `V${p[0]}.${p[1]}` : (v ? `V${v}` : '');
+};
 const PLAT_CN = { douyin: '抖音', xhs: '小红书', wechat: '视频号' };
 const STATUS_CN = { new: '待联系', contacted: '已联系', replied: '已回复', won: '已成交', invalid: '无效' };
 const STATUS_CLS = { new: 'tc-pill-warning', contacted: 'tc-pill-neutral', replied: 'tc-pill-success', won: 'tc-pill-success', invalid: 'tc-pill-danger' };
@@ -72,7 +77,7 @@ function renderMe() {
   const m = S.me || {};
   $('#top-user').textContent = m.username || '—';
   $('#top-av').textContent = (m.username || '?').slice(0, 1).toUpperCase();
-  $('#side-ver').textContent = `v${m.version || ''} · ${m.server_url || ''}`;
+  $('#side-ver').textContent = `${displayVersion(m.version)} · ${m.server_url || ''}`;
   const days = m.days_left;
   $('#quota-days').textContent = days == null ? '永久' : `${days} 天`;
   $('#quota-exp').textContent = m.expires_at ? `到期 ${String(m.expires_at).slice(0, 10)}` : '—';
@@ -482,7 +487,7 @@ async function renderSettings() {
     <div class="info-row"><span>到期时间</span><b>${esc((m.expires_at || '—').slice(0, 10))} · ${m.days_left == null ? '永久' : m.days_left + ' 天'}</b></div>
     <div class="info-row"><span>本机设备名</span><b>${esc(m.device_name || '—')}</b></div>
     <div class="info-row"><span>授权服务器</span><b>${esc(m.server_url || '—')}</b></div>
-    <div class="info-row"><span>客户端版本</span><b>v${esc(m.version || '—')}</b></div>
+    <div class="info-row"><span>客户端版本</span><b>${esc(displayVersion(m.version))}</b></div>
     <div class="info-row"><span>采集平台</span><b>${esc(platName(c.platform || 'douyin'))}</b></div>
     <div class="tc-field" style="margin-top:18px"><label class="tc-label">抓取配置</label>
       <div class="cfg-hint">平台、链接、关键词、时间范围与抓取深度在弹窗里编辑。</div></div>`;
@@ -525,7 +530,7 @@ async function checkUpdate(manual) {
   try { r = await api('/api/update/info'); }
   catch (e) { if (manual) toast(e.message, 'err'); return; }
   if (!r.has_update) { if (manual) toast(`已是最新版本 v${r.current}`); return; }
-  updateModal(`发现新版本 v${r.latest}`, r.notes || '正在准备更新…', '立即下载并安装', startUpdate);
+  updateModal(`发现新版本 ${displayVersion(r.latest)}`, r.notes || '正在准备更新…', '立即下载并安装', startUpdate);
 }
 
 async function startUpdate() {
