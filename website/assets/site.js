@@ -75,10 +75,12 @@
     applyArch(isIntelMac ? 'intel' : 'arm');
   })();
 
+  // 安装包走腾讯云 COS（对象存储），服务器只负责授权与后台
+  var DL_BASE = 'https://tingchao-downloads-1315442697.cos.ap-beijing.myqcloud.com/';
   function applyArch(which) {
     document.querySelectorAll('.mac-dl').forEach(function (a) {
       var f = a.getAttribute(which === 'intel' ? 'data-intel' : 'data-arm');
-      if (f) a.setAttribute('href', '/downloads/' + f);
+      if (f) a.setAttribute('href', DL_BASE + f);
     });
     var note = document.getElementById('arch-note');
     if (!note || !note.firstChild) return;
