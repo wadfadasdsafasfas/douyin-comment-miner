@@ -139,3 +139,12 @@ bash tools/parallel-artifact-get.sh <runId> <artifactId> <sizeInBytes> [段数]
 命令。彻底解决 = 加入 Apple Developer Program（$99/年），CI 里用
 Developer ID Application 证书签名 + `xcrun notarytool submit` 公证 +
 `stapler staple` 装订，之后用户双击即开、不再弹任何提示。
+
+## v1.0.1（2026-10-09）：新服务器切换 + 到期秒级管控
+
+- 客户端默认授权地址改为 https://tingchao.cengfengkeji.cn；版本 1.0.1
+- 到期判定精确到秒（字符串比较 ISO 即字典序）；服务端过期文案带完整年月日时分秒（auth_db._fmt_exp）
+- 客户端每 3 分钟调 /api/auth/me（pollAuthOnce），过期/停用/被顶号 → 清 token、踢回登录页并 toast 精确原因
+- 后台改到期升级 datetime-local（step=1 可输秒），快捷选项按当天 23:59:59；列表时间到秒（admin.fmt_date）
+- 老京东云服务器 nginx 的 /api/ 已桥接代理到新域名（旧 IP 客户端无感，可继续收到 1.0.1 升级），
+  客户端全部升级后可撤桥、退订老服务器
