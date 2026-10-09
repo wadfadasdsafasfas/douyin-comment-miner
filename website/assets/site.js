@@ -59,6 +59,9 @@
     });
   });
 
+  // 安装包走腾讯云 COS（对象存储），服务器只负责授权与后台
+  // 注意：必须在 detectArch 调用 applyArch 之前赋值，否则 href 会拼出 "undefinedTingChao-…"
+  var DL_BASE = 'https://tingchao-downloads-1315442697.cos.ap-beijing.myqcloud.com/';
   // ---------- macOS 芯片架构自适应 ----------
   // Apple Silicon 上 Chrome 的 UA 仍报 Intel，因此用 WebGL 渲染器兜底判断
   var isIntelMac = false;
@@ -75,8 +78,6 @@
     applyArch(isIntelMac ? 'intel' : 'arm');
   })();
 
-  // 安装包走腾讯云 COS（对象存储），服务器只负责授权与后台
-  var DL_BASE = 'https://tingchao-downloads-1315442697.cos.ap-beijing.myqcloud.com/';
   function applyArch(which) {
     document.querySelectorAll('.mac-dl').forEach(function (a) {
       var f = a.getAttribute(which === 'intel' ? 'data-intel' : 'data-arm');
