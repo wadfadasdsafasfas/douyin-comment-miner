@@ -25,15 +25,16 @@ APPID = '1315442697'   # CAM GetUserAppId 实测值（主账号 ID 100028693851 
 REGION = 'ap-beijing'
 BUCKET = f'tingchao-downloads-{APPID}'
 
-REL = '/Library/知识库/合智云数/抖音采集/douyin-comment-miner/electron/release'
-WIN = '/tmp/winout-36839183962'
+VERSION = json.load(open(os.path.join(os.path.dirname(__file__), '..', 'electron', 'package.json')))['version']
+REL = os.path.join(os.path.dirname(__file__), '..', 'electron', 'release')
+WIN = os.environ.get('WIN_DIR', f'/tmp/winout-latest')   # 解包 CI windows-packages 后的目录
 FILES = [
-    (f'{REL}/TingChao-macos-v1.0.0-arm64.dmg', 'TingChao-macos-v1.0.0-arm64.dmg'),
-    (f'{REL}/TingChao-macos-v1.0.0-arm64.zip', 'TingChao-macos-v1.0.0-arm64.zip'),
-    (f'{REL}/TingChao-macos-v1.0.0-x64.dmg',   'TingChao-macos-v1.0.0-x64.dmg'),
-    (f'{REL}/TingChao-macos-v1.0.0-x64.zip',   'TingChao-macos-v1.0.0-x64.zip'),
-    (f'{WIN}/TingChao-windows-v1.0.0-setup.exe', 'TingChao-windows-v1.0.0-setup.exe'),
-    (f'{WIN}/TingChao-windows-v1.0.0-x64.zip',   'TingChao-windows-v1.0.0-portable.zip'),
+    (f'{REL}/TingChao-macos-v{VERSION}-arm64.dmg', f'TingChao-macos-v{VERSION}-arm64.dmg'),
+    (f'{REL}/TingChao-macos-v{VERSION}-arm64.zip', f'TingChao-macos-v{VERSION}-arm64.zip'),
+    (f'{REL}/TingChao-macos-v{VERSION}-x64.dmg',   f'TingChao-macos-v{VERSION}-x64.dmg'),
+    (f'{REL}/TingChao-macos-v{VERSION}-x64.zip',   f'TingChao-macos-v{VERSION}-x64.zip'),
+    (f'{WIN}/TingChao-windows-v{VERSION}-setup.exe',    f'TingChao-windows-v{VERSION}-setup.exe'),
+    (f'{WIN}/TingChao-windows-v{VERSION}-x64.zip',      f'TingChao-windows-v{VERSION}-portable.zip'),
 ]
 
 client = CosS3Client(CosConfig(Region=REGION, SecretId=SECRET_ID, SecretKey=SECRET_KEY, Scheme='https'))
