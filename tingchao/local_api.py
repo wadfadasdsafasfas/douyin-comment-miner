@@ -260,9 +260,15 @@ UPDATE_DIR = Path.home() / ".tingchao" / "updates"
 
 
 def _update_url(info: dict) -> str:
-    """后台只存一条 macos_url，但 mac 有 arm64 / x64 两种包；按本机架构纠正后缀。"""
-    key = "macos_url" if sys.platform == "darwin" else "windows_url"
-    url = (info or {}).get(key) or ""
+    """下载地址：优先 downloads.{macos,windows}（新版 /api/latest），
+    兼容顶层平铺键；mac 有 arm64 / x64 两种包，按本机架构纠正后缀。"""
+    if not info:
+        return ""
+    dl = info.get("downloads") or {}
+    if sys.platform == "darwin":
+        url = dl.get("macos") or info.get("macos_url") or ""
+    else:
+        url = dl.get("windows") or info.get("windows_url") or ""
     if sys.platform != "darwin" or not url:
         return url
     arch = "x64" if platform.machine().lower() in ("x86_64", "amd64") else "arm64"

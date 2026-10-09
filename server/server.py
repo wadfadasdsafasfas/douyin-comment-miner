@@ -287,6 +287,9 @@ def latest_version():
             "windows": cfg.get("windows_url", ""),
             "macos":   cfg.get("macos_url", ""),
         },
+        # 顶层冗余一份，兼容 1.0.0 客户端（local_api._update_url 读的是平铺键）
+        "windows_url": cfg.get("windows_url", ""),
+        "macos_url":   cfg.get("macos_url", ""),
     }
 
 
