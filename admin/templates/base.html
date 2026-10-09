@@ -130,7 +130,7 @@ function actExpiry(username, currentDate){
   const m = document.getElementById('m-expiry');
   m.querySelector('[name=username]').value = username;
   m.querySelector('.m-title').textContent = `改到期 — ${username}`;
-  m.querySelector('[name=new_expires]').value = currentDate || '';
+  m.querySelector('[name=new_expires]').value = (currentDate || '').slice(0,10);  // type=date 不接受完整 ISO，否则字段直接清空
   openModal('m-expiry');
 }
 function actPassword(username){

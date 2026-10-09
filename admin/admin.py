@@ -297,7 +297,7 @@ def users_create_action(request: Request, username: str = Form(...),
         return _redirect_login()
     r = api_post("/api/admin/users", token=token,
                  json={"username": username, "password": password,
-                       "expires_at": expires_at, "note": note})
+                       "expires_at": f"{expires_at}T23:59:59", "note": note})
     if r.status_code == 200:
         return RedirectResponse(url="/admin/users?ok=1&action=create&target=" + username,
                                 status_code=303)

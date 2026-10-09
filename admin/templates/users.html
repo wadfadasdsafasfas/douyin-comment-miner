@@ -58,7 +58,7 @@
             </div>
           </td>
           <td>
-            <div class="tc-num" style="font-weight:600">{{ r.expires_at }}</div>
+            <div class="tc-num" style="font-weight:600">{{ r.expires_at[:10] }}</div>
             {% if r.days_left is not none %}
               {% if r.days_left < 0 %}
                 <div class="tc-num" style="font-size:11px;color:var(--tc-danger);font-weight:700;margin-top:2px">已过期 {{ -r.days_left }} 天</div>
@@ -165,7 +165,7 @@
         <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-close"/></svg>
       </button>
     </div>
-    <form method="post" action="/admin/users/CHANGE/expiry".replace("CHANGE", "")>
+    <form method="post" action="/admin/users/CHANGE/expiry">
       <input type="hidden" name="username" value="">
       <div class="tc-modal-body">
         <div class="tc-field" style="margin-bottom:14px">
@@ -201,7 +201,7 @@
         <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-close"/></svg>
       </button>
     </div>
-    <form method="post" action="/admin/users/CHANGE/password".replace("CHANGE", "")>
+    <form method="post" action="/admin/users/CHANGE/password">
       <input type="hidden" name="username" value="">
       <div class="tc-modal-body">
         <div class="tc-field">
@@ -230,7 +230,7 @@
         <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-close"/></svg>
       </button>
     </div>
-    <form method="post" action="/admin/users/CHANGE/status".replace("CHANGE", "")>
+    <form method="post" action="/admin/users/CHANGE/status">
       <input type="hidden" name="username" value="">
       <div class="tc-modal-body">
         <div style="background:var(--tc-surface-2);border:1px solid var(--tc-line);color:var(--tc-ink-2);padding:14px;border-radius:10px;font-size:13px;line-height:1.6">
@@ -245,17 +245,6 @@
   </div>
 </div>
 
-{% endblock %}
-
-{% block toasts %}
-  {% if msg %}
-    {% if ok %}
-      <div class="tc-toasts"><div class="tc-toast tc-toast-success"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-check"/></svg> {{ msg }}</div></div>
-    {% else %}
-      <div class="tc-toasts"><div class="tc-toast tc-toast-danger"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-alert"/></svg> {{ msg }}</div></div>
-    {% endif %}
-  {% endif %}
-{% endblock %}
 
 <script>
 // 把 form action 里的 CHANGE 替换成真实 username（从 modal 里的 hidden username 拿到）
@@ -269,3 +258,15 @@ document.querySelectorAll('.tc-overlay form').forEach(f=>{
   }
 });
 </script>
+
+{% endblock %}
+
+{% block toasts %}
+  {% if msg %}
+    {% if ok %}
+      <div class="tc-toasts"><div class="tc-toast tc-toast-success"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-check"/></svg> {{ msg }}</div></div>
+    {% else %}
+      <div class="tc-toasts"><div class="tc-toast tc-toast-danger"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-alert"/></svg> {{ msg }}</div></div>
+    {% endif %}
+  {% endif %}
+{% endblock %}
