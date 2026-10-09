@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
@@ -107,6 +108,38 @@ def _relaunch(app_root: Path) -> None:
                          stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 
+def _extract_zip_preserving_links(zf: zipfile.ZipFile, dest: Path) -> None:
+    """zipfile.extractall 不还原符号链接（会把链接写成含目标路径的文本文件），
+    Electron 的 .app 里 Frameworks 全靠 symlink 组织，直接 extractall 会得到
+    结构残废、签名失效、无法启动的 App。这里手工还原：链接建 symlink，
+    普通文件按 unix 权限落盘，并防 zip 路径穿越。"""
+    dest = dest.resolve()
+    dest.mkdir(parents=True, exist_ok=True)
+    for info in zf.infolist():
+        mode = info.external_attr >> 16
+        name = info.filename
+        # 防 zip-slip
+        target = (dest / name)
+        if not str(target.resolve()).startswith(str(dest)):
+            continue
+        if stat.S_ISLNK(mode):
+            target.parent.mkdir(parents=True, exist_ok=True)
+            link = zf.read(info.filename).decode("utf-8", "replace")
+            if target.is_symlink() or target.exists():
+                if target.is_dir() and not target.is_symlink():
+                    continue
+                target.unlink()
+            os.symlink(link, target)
+        elif info.is_dir():
+            target.mkdir(parents=True, exist_ok=True)
+        else:
+            target.parent.mkdir(parents=True, exist_ok=True)
+            with zf.open(info.filename) as src, open(target, "wb") as dst:
+                shutil.copyfileobj(src, dst)
+            if mode:
+                os.chmod(target, mode & 0o7777)
+
+
 def apply_update(zip_path: Path, app_root: Path, wait_pid: int | None = None) -> int:
     """原子替换应用本体。app_root 在 mac 上是 .app 的父目录，在 win 上是安装目录。"""
     log = lambda m: print(f"[updater] {m}", flush=True)
@@ -126,7 +159,7 @@ def apply_update(zip_path: Path, app_root: Path, wait_pid: int | None = None) ->
     try:
         log(f"解压 → {work}")
         with zipfile.ZipFile(zip_path) as zf:
-            zf.extractall(work)
+            _extract_zip_preserving_links(zf, work)
 
         if sys.platform == "darwin":
             new_app = work / f"{APP_NAME}.app"
