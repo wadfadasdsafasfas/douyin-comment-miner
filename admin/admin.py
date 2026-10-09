@@ -76,10 +76,13 @@ def api_delete(path: str, token: str | None = None):
 
 # ---------- 工具函数 ----------
 def fmt_date(s: str | None) -> str:
+    """到期/创建时间统一显示成 YYYY-MM-DD HH:MM:SS（无时间部分则补 23:59:59）。"""
     if not s:
         return "—"
     try:
-        return s[:10]
+        if "T" in s:
+            return s.replace("T", " ")[:19]
+        return f"{s[:10]} 23:59:59"
     except Exception:
         return s
 
@@ -318,7 +321,9 @@ def users_change_expiry(request: Request, username: str,
     if not new_expires:
         return RedirectResponse(url=f"/admin/users?ok=0&action=expiry&target={username}",
                                 status_code=303)
-    payload = {"expires_at": f"{new_expires}T23:59:59"}
+    # datetime-local 提交带时间（精确到秒），纯日期则按当天 23:59:59
+    normalized = new_expires if "T" in new_expires else f"{new_expires}T23:59:59"
+    payload = {"expires_at": normalized}
     r = api_patch(f"/api/admin/users/{username}/expiry", token=token, json=payload)
     if r.status_code == 200:
         return RedirectResponse(url=f"/admin/users?ok=1&action=expiry&target={username}",

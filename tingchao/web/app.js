@@ -75,6 +75,28 @@ function enterApp() {
   $('#view-app').classList.remove('hidden');
   renderMe();
   loadConfig().then(() => { go(S.page); connectEvents(); refreshStats(); });
+  startAuthWatch();
+}
+
+// 每 3 分钟向服务器核对一次授权；到期/被停用/被顶号立即踢回登录页
+async function pollAuthOnce() {
+  if (!S.me || $('#view-app').classList.contains('hidden')) return;
+  try {
+    const me = await api('/api/auth/me');
+    if (me.logged_in) { S.me = me; renderMe(); return; }
+    if (S.authTimer) { clearInterval(S.authTimer); S.authTimer = null; }
+    await api('/api/auth/logout', { method: 'POST' }).catch(() => {});
+    // 服务器返回的 msg 已含精确到秒的到期时间（auth_db._fmt_exp）
+    const msg = me.msg || '登录状态已失效，请重新登录';
+    S.me = null;
+    showLogin();
+    loginErr(msg);
+    toast(msg, 'err');
+  } catch (e) { /* 本地服务或网络抖动：静默，下个周期再试 */ }
+}
+function startAuthWatch() {
+  if (S.authTimer) clearInterval(S.authTimer);
+  S.authTimer = setInterval(pollAuthOnce, 3 * 60 * 1000);
 }
 
 function renderMe() {
@@ -536,7 +558,7 @@ async function checkUpdate(manual) {
   try { r = await api('/api/update/info'); }
   catch (e) { if (manual) toast(e.message, 'err'); return; }
   if (!r.has_update) { if (manual) toast(`已是最新版本 v${r.current}`); return; }
-  updateModal(`发现新版本 ${displayVersion(r.latest)}`, r.notes || '正在准备更新…', '立即下载并安装', startUpdate);
+  updateModal(`发现新版本 ${r.latest}`, r.notes || '正在准备更新…', '立即下载并安装', startUpdate);
 }
 
 async function startUpdate() {

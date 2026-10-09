@@ -58,7 +58,7 @@
             </div>
           </td>
           <td>
-            <div class="tc-num" style="font-weight:600">{{ r.expires_at[:10] }}</div>
+            <div class="tc-num" style="font-weight:600">{{ r.expires_at }}</div>
             {% if r.days_left is not none %}
               {% if r.days_left < 0 %}
                 <div class="tc-num" style="font-size:11px;color:var(--tc-danger);font-weight:700;margin-top:2px">已过期 {{ -r.days_left }} 天</div>
@@ -178,7 +178,8 @@
         </div>
         <div class="tc-field">
           <label class="tc-label">新到期日期</label>
-          <input class="tc-input" type="date" name="new_expires" required>
+          <input class="tc-input" type="datetime-local" name="new_expires" step="1" required>
+            <div style="font-size:11.5px;color:var(--tc-ink-3);margin-top:5px">精确到秒；快捷选项按「当天 23:59:59」处理</div>
         </div>
       </div>
       <div class="tc-modal-foot">

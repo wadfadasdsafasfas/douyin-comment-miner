@@ -130,7 +130,7 @@ function actExpiry(username, currentDate){
   const m = document.getElementById('m-expiry');
   m.querySelector('[name=username]').value = username;
   m.querySelector('.m-title').textContent = `改到期 — ${username}`;
-  m.querySelector('[name=new_expires]').value = (currentDate || '').slice(0,10);  // type=date 不接受完整 ISO，否则字段直接清空
+  m.querySelector('[name=new_expires]').value = (currentDate || '').slice(0,19);  // datetime-local 接受到秒
   openModal('m-expiry');
 }
 function actPassword(username){
@@ -157,7 +157,10 @@ function actDelete(username){
 // 快捷到期日 select：自动写入日期 input
 document.querySelectorAll('[data-quick-expiry]').forEach(sel=>{
   sel.addEventListener('change',()=>{
-    if(sel.value) sel.form.querySelector('[name=new_expires]').value = sel.value;
+    if(sel.value){
+      const el = sel.form.querySelector('[name=new_expires]');
+      el.value = sel.value.includes('T') ? sel.value : sel.value + 'T23:59:59';  // 快捷选项=当天末尾，datetime-local 需要完整时间
+    }
   });
 });
 

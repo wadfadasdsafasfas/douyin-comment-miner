@@ -248,6 +248,14 @@ def get_all_config() -> dict:
 
 
 # ---------- 登录 / Token ----------
+def _fmt_exp(v: str) -> str:
+    """把 ISO 时间规整成 YYYY-MM-DD HH:MM:SS（缺时间则补 23:59:59）。"""
+    v = (v or '').strip()
+    if 'T' in v:
+        return v.replace('T', ' ')[:19]
+    return f'{v} 23:59:59'
+
+
 def login(username: str, password: str, device_id: str = "",
           device_name: str = "", kick_existing: bool = False) -> tuple[dict | None, str, str | None]:
     """返回 (token_info or None, message, existing_device_name)。
@@ -267,7 +275,7 @@ def login(username: str, password: str, device_id: str = "",
     if row["status"] != "active":
         return None, "账号已被停用，请联系管理员", None
     if row["expires_at"] < datetime.now().isoformat():
-        return None, f"账号已到期（{row['expires_at'][:10]}），请联系管理员续期", None
+        return None, f"账号已到期（{_fmt_exp(row['expires_at'])}），请联系管理员续期", None
 
     # 单设备检查：查所有现有 token
     with conn() as c:
@@ -342,7 +350,7 @@ def verify(token: str, device_id: str = "") -> tuple[dict | None, str, str]:
     if row["device_id"] and row["device_id"] != device_id:
         return None, "账号已在另一台设备登录", "DEVICE_KICKED"
     if row["user_exp"] < now_iso:
-        return None, f"账号已到期（{row['user_exp'][:10]}），请联系管理员续期", "EXPIRED"
+        return None, f"账号已到期（{_fmt_exp(row['user_exp'])}），请联系管理员续期", "EXPIRED"
     if row["status"] != "active":
         return None, "账号已被停用", "DISABLED"
     # 滑动续期：把 token 过期时间延长 30 天
