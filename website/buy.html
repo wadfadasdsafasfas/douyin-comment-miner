@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>开通听潮 · 专业版</title>
+<style>
+:root{--ink:#171A26;--ink-2:#5A6072;--ink-3:#9AA0B4;--line:#E8EAF1;--bg:#F6F7FB;--surf:#fff;
+--brand:#FF4D4F;--brand-2:#7C5CFF;--grad:linear-gradient(135deg,#FF8A3D,#FF4D6D 45%,#7C5CFF)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);
+  font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+.wrap{max-width:920px;margin:0 auto;padding:48px 22px 64px}
+.brand{display:flex;align-items:center;gap:12px;margin-bottom:34px}
+.brand img{width:38px;height:38px}
+.brand b{font-size:19px;letter-spacing:-.01em}
+.brand span{font-size:11px;color:var(--ink-3);letter-spacing:.16em;margin-left:2px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 1px 2px rgba(23,26,38,.04),0 12px 32px -18px rgba(23,26,38,.16);overflow:hidden}
+.hero{background:var(--grad);color:#fff;padding:30px 32px}
+.hero h1{margin:0;font-size:26px;letter-spacing:-.02em}
+.hero p{margin:8px 0 0;opacity:.92;font-size:14px}
+.body{padding:26px 32px 32px}
+label{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin:0 0 6px}
+input,select{width:100%;padding:12px 13px;border:1px solid var(--line);border-radius:11px;
+  font-size:15px;color:var(--ink);background:#fff;outline:none}
+input:focus,select:focus{border-color:var(--brand)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
+@media(max-width:640px){.grid{grid-template-columns:1fr}}
+.plans{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px}
+@media(max-width:640px){.plans{grid-template-columns:repeat(2,1fr)}}
+.plan{border:1.5px solid var(--line);border-radius:14px;padding:14px 12px;text-align:center;cursor:pointer;
+  transition:.16s;background:#fff}
+.plan:hover{border-color:#FFB4B5}
+.plan.on{border-color:var(--brand);background:#FFF5F5}
+.plan .m{font-size:13px;color:var(--ink-2);font-weight:600}
+.plan .p{font-size:20px;font-weight:800;letter-spacing:-.02em;margin-top:4px}
+.plan .u{font-size:11px;color:var(--ink-3)}
+.btn{display:block;width:100%;padding:15px;border:0;border-radius:12px;background:var(--grad);
+  color:#fff;font-size:16px;font-weight:700;cursor:pointer;letter-spacing:.04em}
+.btn:disabled{opacity:.55;cursor:not-allowed}
+.tip{font-size:12.5px;color:var(--ink-3);margin-top:14px;line-height:1.7}
+.err{background:#FEECEC;color:#C0392B;border-radius:10px;padding:11px 13px;font-size:13.5px;margin-bottom:16px}
+.ok{background:#EAF7EF;color:#1E7A45;border-radius:10px;padding:14px 16px;font-size:14.5px}
+.who{font-size:13px;color:rgba(255,255,255,.95);margin-top:10px}
+.foot{text-align:center;font-size:12px;color:var(--ink-3);margin-top:26px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="brand">
+    <img src="/assets/logo-mark.svg" alt="听潮" onerror="this.style.display='none'">
+    <b>听潮</b><span>TIDE SIGNAL</span>
+  </div>
+
+  <div class="card">
+    <div class="hero">
+      <h1>开通听潮专业版</h1>
+      <p>评论监控与关键词线索挖掘 · 数据留在你自己的电脑上</p>
+      <div class="who" id="who">正在识别服务你的渠道…</div>
+    </div>
+    <div class="body">
+      <div id="msg"></div>
+      <div id="form">
+        <div class="plans" id="plans"></div>
+        <div class="grid">
+          <div><label>你的登录账号（3 位以上，用于登录听潮）</label><input id="username" placeholder="例如 yourname01"></div>
+          <div><label>公司 / 团队名称</label><input id="customer_name" placeholder="例如 某某传媒"></div>
+        </div>
+        <div class="grid">
+          <div><label>联系手机号</label><input id="contact_phone" placeholder="用于渠道方与你联系"></div>
+          <div><label>购买时长</label><select id="months"></select></div>
+        </div>
+        <button class="btn" id="submit">提交订单</button>
+        <div class="tip">提交后由你的渠道服务商完成付款确认，开通成功后账号与初始密码会通过渠道方转交给你。官方价目统一，渠道无权改价。</div>
+      </div>
+    </div>
+  </div>
+  <div class="foot">听潮 TideSignal · 层峰科技</div>
+</div>
+
+<script>
+(function(){
+  var code = (new URLSearchParams(location.search).get('code') || '').trim();
+  var price = null, picked = null;
+  var $ = function(id){ return document.getElementById(id); };
+
+  if (!code) { $('who').textContent = '缺少渠道码，请联系你的服务商重新获取'; disable('链接无效，请从渠道方提供的链接进入'); return; }
+
+  fetch('/api/public/partner/' + encodeURIComponent(code))
+    .then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+    .then(function(res){
+      if (!res.ok) { disable(res.d.detail || '渠道链接无效或已停用'); return; }
+      price = res.d.price;
+      $('who').textContent = '服务你的渠道：' + res.d.partner;
+      render();
+    })
+    .catch(function(){ disable('网络异常，请稍后重试'); });
+
+  function render(){
+    var box = $('plans'), sel = $('months');
+    price.options.forEach(function(o, i){
+      var el = document.createElement('div');
+      el.className = 'plan' + (i === price.options.length - 1 ? ' on' : '');
+      el.innerHTML = '<div class="m">' + o.months + ' 个月</div><div class="p">¥' + o.amount + '</div>'
+                   + '<div class="u">' + (o.months === 1 ? '按月付' : '折合 ¥' + (Math.round(o.amount / o.months * 100) / 100) + '/月') + '</div>';
+      el.onclick = function(){
+        [].forEach.call(box.children, function(c){ c.classList.remove('on'); });
+        el.classList.add('on'); picked = o.months; sel.value = o.months;
+      };
+      box.appendChild(el);
+      var op = document.createElement('option');
+      op.value = o.months; op.textContent = o.months + ' 个月 · ¥' + o.amount;
+      sel.appendChild(op);
+    });
+    picked = price.options[price.options.length - 1].months;
+    sel.value = picked;
+    sel.onchange = function(){ picked = parseInt(sel.value, 10); };
+  }
+
+  $('submit').onclick = function(){
+    var b = {
+      username: $('username').value.trim(),
+      customer_name: $('customer_name').value.trim(),
+      contact_phone: $('contact_phone').value.trim(),
+      months: picked
+    };
+    if (b.username.length < 3) return show('账号至少 3 个字符');
+    if (!b.customer_name) return show('请填写公司 / 团队名称');
+    var btn = this; btn.disabled = true; btn.textContent = '提交中…';
+    fetch('/api/public/partner/' + encodeURIComponent(code) + '/orders', {
+      method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(b)
+    }).then(function(r){ return r.json().then(function(d){ return {ok:r.ok, d:d}; }); })
+      .then(function(res){
+        btn.disabled = false; btn.textContent = '提交订单';
+        if (!res.ok) return show(res.d.detail || '提交失败');
+        $('form').innerHTML = '<div class="ok"><b>已提交，订单号 ' + (res.d.order_no || '') + '</b><br>'
+          + '渠道方确认付款后即刻开通，账号 <b>' + b.username + '</b> 与初始密码会通过你的服务商转交。</div>';
+      })
+      .catch(function(){ btn.disabled = false; btn.textContent = '提交订单'; show('网络异常，请稍后重试'); });
+  };
+
+  function show(t){ $('msg').innerHTML = '<div class="err">' + t + '</div>'; }
+  function disable(t){ $('form').innerHTML = '<div class="err">' + t + '</div>'; }
+})();
+</script>
+</body>
+</html>

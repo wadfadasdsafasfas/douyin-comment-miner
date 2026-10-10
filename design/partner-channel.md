@@ -207,7 +207,7 @@ def calc_rate(user, paid_at) -> float:
 **访问地址**
 
 - 我方渠道管理：`https://admin.tingchao.cengfengkeji.cn/admin/partners`（渠道商 / 渠道订单 / 返佣账单三个页面已进侧栏）
-- 渠道商后台：`https://tingchao.cengfengkeji.cn/p/login`（DNS 加好后 `partner.tingchao.cengfengkeji.cn/p/login` 同样可用）
+- 渠道商后台（独立域名 + HTTPS 已上线）：`https://channel.tingchao.cengfengkeji.cn`，根路径自动跳登录页
 
 **落地细节**
 
