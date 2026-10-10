@@ -1,0 +1,58 @@
+{% extends "base.html" %}
+{% block title %}渠道订单 · 听潮 · 控制台{% endblock %}
+{% block crumb %}管理 / <b>渠道订单</b>{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div>
+    <div class="tc-page-title">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-refresh"/></svg>
+      渠道订单
+    </div>
+    <div class="p-muted" style="margin-top:6px">确认收款后系统在一个事务里建号/续期、绑定归属并计入返佣。</div>
+  </div>
+</div>
+
+<div class="p-inline" style="margin-bottom:14px">
+  <a class="tc-btn tc-btn-sm {% if not status %}tc-btn-primary{% else %}tc-btn-ghost{% endif %}" href="/admin/partner/orders">全部</a>
+  <a class="tc-btn tc-btn-sm {% if status=='pending' %}tc-btn-primary{% else %}tc-btn-ghost{% endif %}" href="/admin/partner/orders?status=pending">待核销</a>
+  <a class="tc-btn tc-btn-sm {% if status=='paid' %}tc-btn-primary{% else %}tc-btn-ghost{% endif %}" href="/admin/partner/orders?status=paid">已成交</a>
+  <a class="tc-btn tc-btn-sm {% if status=='refunded' %}tc-btn-primary{% else %}tc-btn-ghost{% endif %}" href="/admin/partner/orders?status=refunded">已退款</a>
+</div>
+{% if msg %}<div class="p-err">{{ msg }}</div>{% endif %}
+
+<div class="tc-card tc-card-pad">
+  <table class="tc-table">
+    <thead><tr><th>订单号</th><th>渠道</th><th>客户</th><th>账号</th><th>时长</th><th>金额</th><th>来源</th><th>状态</th><th>成交时间</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for o in orders %}
+      <tr>
+        <td><code>{{ o.order_no }}</code></td>
+        <td>{{ o.partner_name }}</td>
+        <td>{{ o.customer_name }}<div class="p-muted">{{ o.contact_phone }}</div></td>
+        <td>{{ o.username }}</td>
+        <td>{{ o.months }} 个月</td>
+        <td class="tc-num">¥{{ '%.2f'|format(o.amount) }}</td>
+        <td class="p-muted">{% if o.source=='partner_link' %}专属链接{% else %}代客下单{% endif %}</td>
+        <td>{% if o.status=='pending' %}<span class="tc-pill tc-pill-warning">待核销</span>
+            {% elif o.status=='paid' %}<span class="tc-pill tc-pill-success">已成交</span>
+            {% elif o.status=='refunded' %}<span class="tc-pill tc-pill-danger">已退款</span>
+            {% else %}{{ o.status }}{% endif %}</td>
+        <td class="p-muted">{{ o.paid_at[:19] if o.paid_at else '—' }}</td>
+        <td>
+          {% if o.status=='pending' %}
+          <form method="post" action="/admin/partner/orders/{{ o.order_no }}/confirm">
+            <button class="tc-btn tc-btn-primary tc-btn-sm" type="submit">确认收款并开通</button></form>
+          {% elif o.status=='paid' %}
+          <form method="post" action="/admin/partner/orders/{{ o.order_no }}/refund"
+                onsubmit="return confirm('确认退款？返佣将红冲进下期账单。')">
+            <button class="tc-btn tc-btn-ghost tc-btn-sm" type="submit">退款</button></form>
+          {% else %}<span class="p-muted">—</span>{% endif %}
+        </td>
+      </tr>
+    {% else %}
+      <tr><td colspan="10"><div class="tc-empty">暂无订单</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

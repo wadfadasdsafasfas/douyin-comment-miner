@@ -11,11 +11,12 @@ nginx 反代 /admin → 127.0.0.1:8501。
 from __future__ import annotations
 
 import os
+from urllib.parse import quote
 from datetime import date, datetime, timedelta
 from pathlib import Path
 
 import requests
-from fastapi import FastAPI, Form, HTTPException, Request
+from fastapi import FastAPI, Form, HTTPException, Request, Response
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -448,6 +449,297 @@ def page_help(request: Request):
         return _redirect_login()
     return templates.TemplateResponse(request, "help.html", common_ctx(
         request, token, active_nav="help"))
+
+
+
+# ============================================================
+#  渠道代理：我方管理台 + 渠道商后台
+#  数据与规则都在后端 partner_db/partner_api，这里只做渲染与转发
+# ============================================================
+
+def api_partner(path: str, method: str = "GET", token: str | None = None,
+                json=None, data=None):
+    headers = {"X-Partner-Token": token} if token else {}
+    return requests.request(method, f"{BACKEND_URL}{path}", headers=headers,
+                            json=json, data=data, timeout=12)
+
+
+def require_partner(request: Request):
+    """返回 (token, partner_dict)；未登录或已停用返回 (None, None)。"""
+    tok = request.cookies.get("partner_token")
+    if not tok:
+        return None, None
+    r = api_partner("/api/partner/me", token=tok)
+    if r.status_code != 200:
+        return None, None
+    return tok, r.json()
+
+
+def p_ctx(partner: dict, nav: str, nav_title: str, extra: dict | None = None) -> dict:
+    ctx = {
+        "partner_name": partner.get("name", "渠道中心"),
+        "partner_code": partner.get("code", ""),
+        "rate_first": round(float(partner.get("rate_first", 0.3)) * 100),
+        "rate_renew": round(float(partner.get("rate_renew", 0.15)) * 100),
+        "nav": nav, "nav_title": nav_title,
+    }
+    if extra:
+        ctx.update(extra)
+    return ctx
+
+
+def _last_month() -> str:
+    today = date.today()
+    y, m = (today.year - 1, 12) if today.month == 1 else (today.year, today.month - 1)
+    return f"{y:04d}-{m:02d}"
+
+
+# ---------------- 我方 · 渠道商管理 ----------------
+@app.get("/partners", response_class=HTMLResponse)
+def page_partners(request: Request, msg: str = "", ok: bool = False):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    partners = api_get("/api/admin/partner/partners", token).json().get("partners", [])
+    price = api_get("/api/admin/partner/price", token).json()
+    return templates.TemplateResponse(request, "partners.html", common_ctx(
+        request, token, active_nav="partners",
+        extra={"partners": partners, "price": price, "msg": msg, "ok": ok, "err": msg if not ok else ""}))
+
+
+@app.post("/partners/create")
+def partners_create(request: Request, name: str = Form(...), login_name: str = Form(...),
+                    password: str = Form(...), contact: str = Form(""), phone: str = Form(""),
+                    note: str = Form(""), rate_first: float = Form(0.30),
+                    rate_renew: float = Form(0.15)):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    r = api_post("/api/admin/partner/partners", token, {
+        "name": name, "login_name": login_name, "password": password,
+        "contact": contact, "phone": phone, "note": note,
+        "rate_first": rate_first, "rate_renew": rate_renew})
+    if r.status_code != 200:
+        return RedirectResponse(url=f"/admin/partners?ok=0&msg={quote(r.json().get('detail','创建失败'))}",
+                                status_code=303)
+    return RedirectResponse(url="/admin/partners?ok=1&msg=" + quote("渠道商已创建"), status_code=303)
+
+
+@app.post("/partners/{pid}/status")
+def partners_status(request: Request, pid: int, status: str = Form(...)):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    api_patch(f"/api/admin/partner/partners/{pid}", token, {"status": status})
+    return RedirectResponse(url="/admin/partners?ok=1&msg=" + quote("状态已更新"), status_code=303)
+
+
+@app.post("/partners/price")
+def partners_price(request: Request, pro_price_month: float = Form(...)):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    r = api_patch("/api/admin/partner/price", token, {"pro_price_month": pro_price_month})
+    ok = r.status_code == 200
+    msg = "价目表已更新" if ok else quote(r.json().get("detail", "更新失败"))
+    return RedirectResponse(url=f"/admin/partners?ok={1 if ok else 0}&msg={msg}", status_code=303)
+
+
+@app.get("/partner/orders", response_class=HTMLResponse)
+def page_partner_orders(request: Request, status: str = "", msg: str = ""):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    orders = api_get("/api/admin/partner/orders" + (f"?status={status}" if status else ""),
+                     token).json().get("orders", [])
+    return templates.TemplateResponse(request, "partner_orders.html", common_ctx(
+        request, token, active_nav="porders",
+        extra={"orders": orders, "status": status, "msg": msg}))
+
+
+@app.post("/partner/orders/{order_no}/confirm")
+def action_order_confirm(request: Request, order_no: str):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    r = api_post(f"/api/admin/partner/orders/{order_no}/confirm", token)
+    ok = r.status_code == 200
+    msg = r.json().get("msg", "") if ok else r.json().get("detail", "核销失败")
+    return RedirectResponse(url="/admin/partner/orders?ok=" + ("1" if ok else "0")
+                            + "&msg=" + quote(msg), status_code=303)
+
+
+@app.post("/partner/orders/{order_no}/refund")
+def action_order_refund(request: Request, order_no: str):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    r = api_post(f"/api/admin/partner/orders/{order_no}/refund", token)
+    ok = r.status_code == 200
+    msg = r.json().get("msg", "") if ok else r.json().get("detail", "退款失败")
+    return RedirectResponse(url="/admin/partner/orders?msg=" + quote(msg), status_code=303)
+
+
+@app.get("/partner/bills", response_class=HTMLResponse)
+def page_partner_bills(request: Request, msg: str = ""):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    bills = api_get("/api/admin/partner/bills", token).json().get("bills", [])
+    return templates.TemplateResponse(request, "partner_bills.html", common_ctx(
+        request, token, active_nav="pbills",
+        extra={"bills": bills, "last_month": _last_month(), "msg": msg}))
+
+
+@app.post("/partner/bills/generate")
+def action_bills_generate(request: Request, bill_month: str = Form(...)):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    r = api_post("/api/admin/partner/bills/generate", token, {"bill_month": bill_month})
+    return RedirectResponse(url="/admin/partner/bills?msg=" + quote(r.json().get("msg", "")),
+                            status_code=303)
+
+
+@app.post("/partner/bills/{bill_id}/settle")
+def action_bill_settle(request: Request, bill_id: int, action: str = Form(...)):
+    token = require_token(request)
+    if not token:
+        return _redirect_login()
+    r = api_post(f"/api/admin/partner/bills/{bill_id}/settle", token, {"action": action})
+    msg = r.json().get("msg", "") if r.status_code == 200 else r.json().get("detail", "操作失败")
+    return RedirectResponse(url="/admin/partner/bills?msg=" + quote(msg), status_code=303)
+
+
+# ---------------- 渠道商后台 ----------------
+@app.get("/p/login", response_class=HTMLResponse)
+def p_page_login(request: Request, msg: str = ""):
+    return templates.TemplateResponse(request, "p_login.html", {"msg": msg})
+
+
+@app.post("/p/login")
+def p_login(request: Request, login_name: str = Form(...), password: str = Form(...)):
+    r = api_partner("/api/partner/login", "POST",
+                    json={"login_name": login_name, "password": password})
+    if r.status_code != 200:
+        return RedirectResponse(url="/p/login?msg=" + quote(r.json().get("detail", "登录失败")),
+                                status_code=303)
+    resp = RedirectResponse(url="/p/", status_code=303)
+    resp.set_cookie("partner_token", r.json()["token"], httponly=True, samesite="lax", max_age=7 * 86400)
+    return resp
+
+
+@app.post("/p/logout")
+def p_logout(request: Request):
+    tok = request.cookies.get("partner_token")
+    if tok:
+        api_partner("/api/partner/logout", "POST", token=tok)
+    resp = RedirectResponse(url="/p/login", status_code=303)
+    resp.delete_cookie("partner_token")
+    return resp
+
+
+@app.get("/p/", response_class=HTMLResponse)
+def p_dashboard(request: Request):
+    tok, partner = require_partner(request)
+    if not tok:
+        return RedirectResponse(url="/p/login", status_code=303)
+    ov = api_partner("/api/partner/overview", token=tok).json()
+    return templates.TemplateResponse(request, "p_dashboard.html",
+                                      p_ctx(partner, "dash", "经营概览", {"ov": ov}))
+
+
+@app.get("/p/orders", response_class=HTMLResponse)
+def p_orders(request: Request, msg: str = "", ok: bool = False):
+    tok, partner = require_partner(request)
+    if not tok:
+        return RedirectResponse(url="/p/login", status_code=303)
+    orders = api_partner("/api/partner/orders", token=tok).json().get("orders", [])
+    price = api_partner("/api/partner/price", token=tok).json()
+    return templates.TemplateResponse(request, "p_orders.html", p_ctx(
+        partner, "orders", "开单与订单",
+        {"orders": orders, "price": price, "err": msg if not ok else "", "msg": msg, "ok": ok}))
+
+
+@app.post("/p/orders/create")
+def p_order_create(request: Request, username: str = Form(...), customer_name: str = Form(...),
+                   months: int = Form(1), contact_phone: str = Form("")):
+    tok, partner = require_partner(request)
+    if not tok:
+        return RedirectResponse(url="/p/login", status_code=303)
+    r = api_partner("/api/partner/orders", "POST", token=tok, json={
+        "username": username, "customer_name": customer_name,
+        "months": months, "contact_phone": contact_phone})
+    ok = r.status_code == 200
+    msg = r.json().get("msg", "已提交") if ok else r.json().get("detail", "下单失败")
+    return RedirectResponse(url=f"/p/orders?ok={1 if ok else 0}&msg=" + quote(msg), status_code=303)
+
+
+@app.get("/p/customers", response_class=HTMLResponse)
+def p_customers(request: Request, msg: str = "", ok: bool = False):
+    tok, partner = require_partner(request)
+    if not tok:
+        return RedirectResponse(url="/p/login", status_code=303)
+    customers = api_partner("/api/partner/customers", token=tok).json().get("customers", [])
+    leads = api_partner("/api/partner/leads", token=tok).json().get("leads", [])
+    return templates.TemplateResponse(request, "p_customers.html", p_ctx(
+        partner, "customers", "客户与报备",
+        {"customers": customers, "leads": leads, "err": msg if not ok else "", "msg": msg, "ok": ok}))
+
+
+@app.post("/p/leads/create")
+def p_lead_create(request: Request, customer_name: str = Form(...), contact_phone: str = Form(...)):
+    tok, partner = require_partner(request)
+    if not tok:
+        return RedirectResponse(url="/p/login", status_code=303)
+    r = api_partner("/api/partner/leads", "POST", token=tok, json={
+        "customer_name": customer_name, "contact_phone": contact_phone})
+    ok = r.status_code == 200
+    msg = r.json().get("msg", "已报备") if ok else r.json().get("detail", "报备失败")
+    return RedirectResponse(url=f"/p/customers?ok={1 if ok else 0}&msg=" + quote(msg), status_code=303)
+
+
+@app.get("/p/bills", response_class=HTMLResponse)
+def p_bills(request: Request, msg: str = "", ok: bool = False):
+    tok, partner = require_partner(request)
+    if not tok:
+        return RedirectResponse(url="/p/login", status_code=303)
+    data = api_partner("/api/partner/bills", token=tok).json()
+    return templates.TemplateResponse(request, "p_bills.html", p_ctx(
+        partner, "bills", "返佣账单",
+        {"bills": data.get("bills", []), "commissions": data.get("commissions", []),
+         "last_month": _last_month(), "err": msg if not ok else "", "msg": msg, "ok": ok}))
+
+
+@app.post("/p/bills/{bill_id}/confirm")
+def p_bill_confirm(request: Request, bill_id: int):
+    tok, partner = require_partner(request)
+    if not tok:
+        return RedirectResponse(url="/p/login", status_code=303)
+    r = api_partner(f"/api/partner/bills/{bill_id}/confirm", "POST", token=tok)
+    ok = r.status_code == 200
+    msg = r.json().get("msg", "") if ok else r.json().get("detail", "操作失败")
+    return RedirectResponse(url=f"/p/bills?ok={1 if ok else 0}&msg=" + quote(msg), status_code=303)
+
+
+@app.get("/p/bills/{bill_month}/export.csv")
+def p_bill_export(request: Request, bill_month: str):
+    tok, _ = require_partner(request)
+    if not tok:
+        return RedirectResponse(url="/p/login", status_code=303)
+    r = api_partner(f"/api/partner/bills/{bill_month}/export.csv", token=tok)
+    resp = Response(content=r.content, media_type="text/csv; charset=utf-8")
+    resp.headers["Content-Disposition"] = f'attachment; filename="commission-{bill_month}.csv"'
+    return resp
+
+
+@app.get("/p/profile", response_class=HTMLResponse)
+def p_profile(request: Request):
+    tok, partner = require_partner(request)
+    if not tok:
+        return RedirectResponse(url="/p/login", status_code=303)
+    return templates.TemplateResponse(request, "p_profile.html",
+                                      p_ctx(partner, "profile", "结算资料", {"partner": partner}))
 
 
 # 健康检查

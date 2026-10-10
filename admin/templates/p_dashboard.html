@@ -1,0 +1,22 @@
+{% extends "p_base.html" %}
+{% block content %}
+<div class="tc-page-title" style="margin-bottom:6px">经营概览</div>
+<div class="p-muted" style="margin-bottom:18px">{{ ov.month }} 当月数据；返佣按客户实付金额计算。</div>
+<div class="tc-kpi-grid" style="margin-bottom:16px">
+  <div class="tc-kpi"><div class="tc-kpi-label">本月成交订单</div><div class="tc-kpi-value">{{ ov.month_paid_count }}</div></div>
+  <div class="tc-kpi"><div class="tc-kpi-label">本月成交金额</div><div class="tc-kpi-value">¥{{ '%.2f'|format(ov.month_paid_amount) }}</div></div>
+  <div class="tc-kpi"><div class="tc-kpi-label">本月返佣</div><div class="tc-kpi-value is-brand">¥{{ '%.2f'|format(ov.month_commission) }}</div></div>
+  <div class="tc-kpi"><div class="tc-kpi-label">待结算返佣</div><div class="tc-kpi-value">¥{{ '%.2f'|format(ov.pending_commission) }}</div></div>
+</div>
+<div class="tc-card tc-card-pad" style="margin-bottom:16px">
+  <div class="p-card-title">我的专属推广链接</div>
+  <div class="p-muted" style="margin-bottom:8px">客户点开即可自助下单，订单自动归属你名下：</div>
+  <div class="p-copy">https://tingchao.cengfengkeji.cn/buy?code={{ partner_code }}</div>
+</div>
+<div class="p-grid p-grid-2">
+  <div class="tc-card tc-card-pad"><div class="p-card-title">在服客户 {{ ov.customer_count }} 个</div>
+    <div class="p-muted">客户授权到期后连续 2 个月无新收款会掉入公海，之后续费不再计返佣。</div></div>
+  <div class="tc-card tc-card-pad"><div class="p-card-title">报备保护期</div>
+    <div class="p-muted">在报 {{ ov.lead_count }} 条，有效期 30 天；先报备先锁定，撞单由我方仲裁。</div></div>
+</div>
+{% endblock %}

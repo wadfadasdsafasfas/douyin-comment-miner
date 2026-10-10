@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>渠道中心登录 · 听潮</title>
+<link rel="stylesheet" href="/admin/static/tokens.css">
+<link rel="stylesheet" href="/admin/static/tingchao-ui.css">
+</head>
+<body>
+<div class="login-screen"><div class="tc-login">
+  <div class="tc-login-brand">
+    <span class="tc-logo"><img src="/admin/static/logo/logo-white.svg" width="36" height="36" alt=""></span>
+    <div class="tc-login-wordmark">听潮</div>
+    <div class="tc-login-en">PARTNER CENTER</div>
+    <div class="tc-login-slogan">渠道代理 · 开单与返佣结算</div>
+  </div>
+  <div class="tc-login-form"><div class="tc-login-card">
+    <div class="tc-login-hello">渠道商登录</div>
+    <div class="tc-login-tip">请使用层峰科技开通的渠道账号</div>
+    <form method="post" action="/p/login">
+      <div class="tc-field"><label class="tc-label">渠道账号</label>
+        <input class="tc-input tc-input-lg" name="login_name" autocomplete="username" autofocus required></div>
+      <div class="tc-field"><label class="tc-label">密码</label>
+        <input class="tc-input tc-input-lg" name="password" type="password" autocomplete="current-password" required></div>
+      {% if msg %}<div class="login-error">{{ msg }}</div>{% endif %}
+      <button class="tc-btn tc-btn-primary tc-btn-block" type="submit" style="height:52px;margin-top:6px">登 录</button>
+    </form>
+    <div class="tc-login-foot" style="text-align:center;margin-top:18px;font-size:12.5px;color:var(--tc-ink-3)">听潮 TideSignal · 层峰科技</div>
+  </div></div>
+</div></div>
+</body></html>

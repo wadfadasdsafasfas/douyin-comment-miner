@@ -1,0 +1,21 @@
+{% extends "p_base.html" %}
+{% block content %}
+<div class="tc-page-title" style="margin-bottom:6px">结算资料</div>
+<div class="p-muted" style="margin-bottom:18px">收款账户与开票信息用于打款，如需变更请联系我方修改，避免账号被篡改。</div>
+<div class="p-grid p-grid-2">
+  <div class="tc-card tc-card-pad">
+    <div class="p-card-title">账号信息</div>
+    <div class="p-row"><span>渠道名称</span><b>{{ partner.name }}</b></div>
+    <div class="p-row"><span>推广码</span><b>{{ partner.code }}</b></div>
+    <div class="p-row"><span>首年返佣</span><b>{{ (partner.rate_first*100)|round|int }}%</b></div>
+    <div class="p-row"><span>续费返佣</span><b>{{ (partner.rate_renew*100)|round|int }}%</b></div>
+  </div>
+  <div class="tc-card tc-card-pad">
+    <div class="p-card-title">收款与开票</div>
+    <div class="p-row"><span>开户行</span><b>{{ partner.bank_name or '未填写' }}</b></div>
+    <div class="p-row"><span>银行账号</span><b>{{ partner.bank_account or '未填写' }}</b></div>
+    <div class="p-row"><span>纳税人识别号</span><b>{{ partner.tax_no or '未填写' }}</b></div>
+    <div class="p-row"><span>状态</span><b>{% if partner.status=='active' %}正常{% else %}已停用{% endif %}</b></div>
+  </div>
+</div>
+{% endblock %}

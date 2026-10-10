@@ -1,0 +1,41 @@
+{% extends "p_base.html" %}
+{% block content %}
+<div class="tc-page-title" style="margin-bottom:6px">客户与报备</div>
+<div class="p-muted" style="margin-bottom:18px">仅可见你自己的客户与商务信息；客户在听潮内采集的评论与线索不属于渠道可见范围。</div>
+{% if err %}<div class="p-err">{{ err }}</div>{% endif %}
+
+<div class="tc-card tc-card-pad" style="margin-bottom:16px">
+  <div class="p-card-title">报备新客户（锁定归属，保护期 30 天）</div>
+  <form method="post" action="/p/leads/create" class="p-inline">
+    <div class="tc-field" style="margin:0"><label class="tc-label">客户名称</label><input class="tc-input" name="customer_name" required></div>
+    <div class="tc-field" style="margin:0"><label class="tc-label">联系手机号</label><input class="tc-input" name="contact_phone" required></div>
+    <button class="tc-btn tc-btn-primary" type="submit">提交报备</button>
+  </form>
+</div>
+
+<div class="tc-card tc-card-pad" style="margin-bottom:16px">
+  <div class="p-card-title">在服客户（{{ customers|length }}）</div>
+  <table class="tc-table">
+    <thead><tr><th>账号</th><th>到期时间</th><th>状态</th><th>返佣期</th></tr></thead>
+    <tbody>{% for u in customers %}
+      <tr><td>{{ u.username }}</td><td>{{ u.expires_at[:19] }}</td>
+        <td>{% if u.expired %}<span class="tc-pill tc-pill-danger">已到期</span>{% else %}<span class="tc-pill tc-pill-success">正常</span>{% endif %}</td>
+        <td class="p-muted">{% if u.in_first_year %}首年 30%{% else %}续费 15%{% endif %}</td></tr>
+    {% else %}<tr><td colspan="4"><div class="tc-empty">还没有成交客户</div></td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+
+<div class="tc-card tc-card-pad">
+  <div class="p-card-title">报备记录</div>
+  <table class="tc-table">
+    <thead><tr><th>客户</th><th>手机号</th><th>状态</th><th>保护期至</th></tr></thead>
+    <tbody>{% for l in leads %}
+      <tr><td>{{ l.customer_name }}</td><td>{{ l.contact_phone }}</td>
+        <td>{% if l.status=='pending' %}<span class="tc-pill tc-pill-warning">保护中</span>
+            {% elif l.status=='converted' %}<span class="tc-pill tc-pill-success">已成交</span>
+            {% else %}<span class="tc-pill tc-pill-neutral">{{ l.status }}</span>{% endif %}</td>
+        <td class="p-muted">{{ l.expire_at[:10] }}</td></tr>
+    {% else %}<tr><td colspan="4"><div class="tc-empty">暂无报备</div></td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endblock %}

@@ -22,6 +22,7 @@ from pydantic import BaseModel
 from uvicorn.middleware.proxy_headers import ProxyHeadersMiddleware
 
 import auth_db
+import partner_api
 
 app = FastAPI(title="DouyinCommentMiner 授权服务", version="1.0")
 
@@ -96,6 +97,10 @@ def require_admin(x_admin_token: str | None = Header(default=None)):
     if not x_admin_token or x_admin_token not in ADMIN_TOKENS:
         raise HTTPException(401, "需要管理员登录")
     return x_admin_token
+
+
+# ---------- 渠道代理接口（管理台 / 渠道端 / 专属链接） ----------
+partner_api.mount(app, require_admin)
 
 
 # ---------- 启动 ----------

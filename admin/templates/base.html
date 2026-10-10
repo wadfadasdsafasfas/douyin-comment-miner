@@ -6,6 +6,7 @@
 <title>{% block title %}听潮 · 控制台{% endblock %}</title>
 <link rel="stylesheet" href="/admin/static/tokens.css">
 <link rel="stylesheet" href="/admin/static/tingchao-ui.css">
+<link rel="stylesheet" href="/admin/static/partner.css">
 <link rel="icon" href="/admin/static/logo/favicon.svg">
 </head>
 <body>
@@ -42,6 +43,20 @@
     <a class="tc-nav-item {% if active_nav=='config' %}is-active{% endif %}" href="/admin/config">
       <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-refresh"/></svg>
       <span>版本与升级</span>
+    </a>
+
+    <div class="tc-nav-group">渠道</div>
+    <a class="tc-nav-item {% if active_nav=='partners' %}is-active{% endif %}" href="/admin/partners">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-user"/></svg>
+      <span>渠道商</span>
+    </a>
+    <a class="tc-nav-item {% if active_nav=='porders' %}is-active{% endif %}" href="/admin/partner/orders">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-refresh"/></svg>
+      <span>渠道订单</span>
+    </a>
+    <a class="tc-nav-item {% if active_nav=='pbills' %}is-active{% endif %}" href="/admin/partner/bills">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-chart"/></svg>
+      <span>返佣账单</span>
     </a>
 
     <div class="tc-nav-group">系统</div>

@@ -1,0 +1,38 @@
+{% extends "p_base.html" %}
+{% block content %}
+<div class="tc-page-title" style="margin-bottom:6px">返佣账单</div>
+<div class="p-muted" style="margin-bottom:18px">按月结算；确认后由我方对公打款，单月不足 ¥200 自动滚存至下月。</div>
+{% if err %}<div class="p-err">{{ err }}</div>{% endif %}
+
+<div class="tc-card tc-card-pad" style="margin-bottom:16px">
+  <div class="p-card-title">月度账单</div>
+  <table class="tc-table">
+    <thead><tr><th>账期</th><th>计费金额</th><th>应结返佣</th><th>状态</th><th>操作</th></tr></thead>
+    <tbody>{% for b in bills %}
+      <tr><td><b>{{ b.bill_month }}</b></td>
+        <td class="tc-num">¥{{ '%.2f'|format(b.total_base) }}</td>
+        <td class="tc-num" style="color:var(--tc-brand-ink)">¥{{ '%.2f'|format(b.total_amount) }}</td>
+        <td>{% if b.status=='draft' %}<span class="tc-pill tc-pill-neutral">待你确认</span>
+            {% elif b.status=='confirmed' %}<span class="tc-pill tc-pill-warning">已确认待打款</span>
+            {% elif b.status=='paid' %}<span class="tc-pill tc-pill-success">已打款</span>
+            {% else %}<span class="tc-pill tc-pill-danger">争议中</span>{% endif %}</td>
+        <td>{% if b.status=='draft' %}<form method="post" action="/p/bills/{{ b.id }}/confirm">
+          <button class="tc-btn tc-btn-primary tc-btn-sm" type="submit">确认账单</button></form>{% else %}<span class="p-muted">—</span>{% endif %}</td></tr>
+    {% else %}<tr><td colspan="5"><div class="tc-empty">还没有账单</div></td></tr>{% endfor %}</tbody>
+  </table>
+  <div class="p-muted" style="margin-top:10px">导出：<a href="/p/bills/{{ last_month }}/export.csv">{{ last_month }} 明细 CSV</a></div>
+</div>
+
+<div class="tc-card tc-card-pad">
+  <div class="p-card-title">返佣流水</div>
+  <table class="tc-table">
+    <thead><tr><th>订单</th><th>客户</th><th>实付</th><th>比例</th><th>返佣</th><th>账期</th><th>状态</th></tr></thead>
+    <tbody>{% for c in commissions %}
+      <tr><td><code>{{ c.order_no }}</code></td><td>{{ c.customer_name }}</td>
+        <td>¥{{ '%.2f'|format(c.order_amount or 0) }}</td><td>{{ (c.rate*100)|round|int }}%</td>
+        <td><b>¥{{ '%.2f'|format(c.amount) }}</b></td><td>{{ c.bill_month }}</td>
+        <td class="p-muted">{% if c.status=='pending' %}待结算{% elif c.status=='settled' %}已结算{% else %}{{ c.status }}{% endif %}</td></tr>
+    {% else %}<tr><td colspan="7"><div class="tc-empty">暂无流水</div></td></tr>{% endfor %}</tbody>
+  </table>
+</div>
+{% endblock %}

@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}渠道商 · 听潮 · 控制台{% endblock %}
+{% block crumb %}管理 / <b>渠道商</b>{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div>
+    <div class="tc-page-title">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-user"/></svg>
+      渠道商管理
+    </div>
+    <div class="p-muted" style="margin-top:6px">官方价由系统锁定，渠道端无改价入口；默认首年 30%、续费 15%，按月结算。</div>
+  </div>
+</div>
+
+<div class="tc-card tc-card-pad" style="margin-bottom:16px">
+  <div class="p-card-title">价目表（渠道按此售价）</div>
+  <form method="post" action="/admin/partners/price" class="p-inline">
+    <div class="tc-field" style="margin:0"><label class="tc-label">专业版月价（元/账号/月）</label>
+      <input class="tc-input" type="number" step="0.01" min="1" name="pro_price_month" value="{{ price.unit_price }}"></div>
+    <button class="tc-btn tc-btn-primary" type="submit">保存</button>
+    <span class="p-muted">档位：{% for o in price.options %}{{ o.months }} 个月 ¥{{ o.amount }}　{% endfor %}</span>
+  </form>
+</div>
+
+<div class="tc-card tc-card-pad" style="margin-bottom:16px">
+  <div class="p-card-title">新建渠道商</div>
+  {% if err %}<div class="p-err">{{ err }}</div>{% endif %}
+  <form method="post" action="/admin/partners/create">
+    <div class="p-grid p-grid-4">
+      <div class="tc-field"><label class="tc-label">渠道名称 *</label><input class="tc-input" name="name" required></div>
+      <div class="tc-field"><label class="tc-label">登录账号 *</label><input class="tc-input" name="login_name" required></div>
+      <div class="tc-field"><label class="tc-label">初始密码 *</label><input class="tc-input" name="password" required minlength="6"></div>
+      <div class="tc-field"><label class="tc-label">联系人</label><input class="tc-input" name="contact"></div>
+      <div class="tc-field"><label class="tc-label">手机号</label><input class="tc-input" name="phone"></div>
+      <div class="tc-field"><label class="tc-label">首年返佣</label><input class="tc-input" type="number" step="0.01" name="rate_first" value="0.30"></div>
+      <div class="tc-field"><label class="tc-label">续费返佣</label><input class="tc-input" type="number" step="0.01" name="rate_renew" value="0.15"></div>
+      <div class="tc-field"><label class="tc-label">备注</label><input class="tc-input" name="note"></div>
+    </div>
+    <button class="tc-btn tc-btn-primary" type="submit">创建渠道商</button>
+    <span class="p-muted" style="margin-left:10px">渠道后台：partner.tingchao.cengfengkeji.cn/p/login</span>
+  </form>
+</div>
+
+<div class="tc-card tc-card-pad">
+  <div class="p-card-title">渠道列表（{{ partners|length }} 家）</div>
+  <table class="tc-table">
+    <thead><tr><th>渠道</th><th>推广码</th><th>账号</th><th>客户</th><th>累计成交</th><th>待结返佣</th><th>比例</th><th>状态</th><th></th></tr></thead>
+    <tbody>
+    {% for p in partners %}
+      <tr>
+        <td><b>{{ p.name }}</b><div class="p-muted">{{ p.contact }} {{ p.phone }}</div></td>
+        <td><code>{{ p.code }}</code></td>
+        <td>{{ p.login_name }}</td>
+        <td class="tc-num">{{ p.customer_count }}</td>
+        <td class="tc-num">¥{{ '%.2f'|format(p.total_paid) }}</td>
+        <td class="tc-num" style="color:var(--tc-brand-ink)">¥{{ '%.2f'|format(p.pending_comm) }}</td>
+        <td class="p-muted">首年 {{ (p.rate_first*100)|round|int }}% / 续费 {{ (p.rate_renew*100)|round|int }}%</td>
+        <td>{% if p.status=='active' %}<span class="tc-pill tc-pill-success">正常</span>{% else %}<span class="tc-pill tc-pill-danger">已停用</span>{% endif %}</td>
+        <td><form method="post" action="/admin/partners/{{ p.id }}/status">
+          <button class="tc-btn tc-btn-ghost tc-btn-sm" name="status" type="submit"
+                  value="{% if p.status=='active' %}disabled{% else %}active{% endif %}">{% if p.status=='active' %}停用{% else %}启用{% endif %}</button>
+        </form></td>
+      </tr>
+    {% else %}
+      <tr><td colspan="9"><div class="tc-empty">还没有渠道商，先创建一家</div></td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}

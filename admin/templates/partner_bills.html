@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+{% block title %}返佣账单 · 听潮 · 控制台{% endblock %}
+{% block crumb %}管理 / <b>返佣账单</b>{% endblock %}
+{% block content %}
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px">
+  <div>
+    <div class="tc-page-title">
+      <svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-chart"/></svg>
+      返佣账单
+    </div>
+    <div class="p-muted" style="margin-top:6px">每月 1 日自动出上月账单；标记打款后对应流水转为已结算。</div>
+  </div>
+</div>
+
+{% if msg %}<div class="p-err">{{ msg }}</div>{% endif %}
+<div class="tc-card tc-card-pad" style="margin-bottom:16px">
+  <div class="p-card-title">手动生成 / 刷新账单</div>
+  <form method="post" action="/admin/partner/bills/generate" class="p-inline">
+    <div class="tc-field" style="margin:0"><label class="tc-label">账期 YYYY-MM</label>
+      <input class="tc-input" name="bill_month" value="{{ last_month }}" pattern="\d{4}-\d{2}"></div>
+    <button class="tc-btn tc-btn-primary" type="submit">生成账单</button>
+  </form>
+</div>
+
+<div class="tc-card tc-card-pad">
+  <table class="tc-table">
+    <thead><tr><th>账期</th><th>渠道</th><th>计费金额</th><th>应结返佣</th><th>状态</th><th>打款时间</th><th>操作</th></tr></thead>
+    <tbody>
+    {% for b in bills %}
+      <tr>
+        <td><b>{{ b.bill_month }}</b></td><td>{{ b.partner_name }}</td>
+        <td class="tc-num">¥{{ '%.2f'|format(b.total_base) }}</td>
+        <td class="tc-num" style="color:var(--tc-brand-ink)">¥{{ '%.2f'|format(b.total_amount) }}</td>
+        <td>{% if b.status=='draft' %}<span class="tc-pill tc-pill-neutral">待渠道确认</span>
+            {% elif b.status=='confirmed' %}<span class="tc-pill tc-pill-warning">已确认待付</span>
+            {% elif b.status=='paid' %}<span class="tc-pill tc-pill-success">已打款</span>
+            {% else %}<span class="tc-pill tc-pill-danger">争议中</span>{% endif %}</td>
+        <td class="p-muted">{{ b.settled_at[:10] if b.settled_at else '—' }}</td>
+        <td>{% if b.status in ('draft','confirmed') %}
+          <form method="post" action="/admin/partner/bills/{{ b.id }}/settle" style="display:inline">
+            <button class="tc-btn tc-btn-primary tc-btn-sm" name="action" value="pay" type="submit">标记已打款</button></form>
+          <form method="post" action="/admin/partner/bills/{{ b.id }}/settle" style="display:inline">
+            <button class="tc-btn tc-btn-ghost tc-btn-sm" name="action" value="dispute" type="submit">争议</button></form>
+          {% else %}<span class="p-muted">—</span>{% endif %}</td>
+      </tr>
+    {% else %}<tr><td colspan="7"><div class="tc-empty">还没有账单</div></td></tr>{% endfor %}
+    </tbody>
+  </table>
+</div>
+{% endblock %}
