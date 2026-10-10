@@ -228,6 +228,11 @@ def apply_update(zip_path: Path, app_root: Path, wait_pid: int | None = None) ->
     log = _file_logger()
     zip_path = Path(zip_path).resolve()
     app_root = Path(app_root).resolve()
+    if sys.platform == "darwin" and app_root.suffix.lower() == ".app":
+        # 壳层偶尔把 .app 本体当安装根传进来，那样新版会被解压成
+        # 听潮.app/听潮.app 套娃，外面那层还是旧版——这里强制修正为父目录
+        log(f"app_root 指向 .app 本体，自动修正为父目录：{app_root.parent}")
+        app_root = app_root.parent
     log(f"开始升级：包={zip_path.name} 目录={app_root} 等待退出 pid={wait_pid}")
 
     why = preflight(app_root)
@@ -271,6 +276,13 @@ def apply_update(zip_path: Path, app_root: Path, wait_pid: int | None = None) ->
                 final.rename(backup)
             log(f"就位新版 → {final}")
             shutil.move(str(new_app), str(final))
+            if not (final / "Contents" / "Info.plist").exists():
+                # 新版没装好：把旧的换回去，坏包挪到一边，别让用户打不开
+                log("新版结构不完整，回滚旧版")
+                if backup.exists():
+                    final.rename(app_root / f"{APP_NAME}.app.broken")
+                    backup.rename(final)
+                return 5
             # 清掉隔离属性，避免更新后被 Gatekeeper 拦
             subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(final)],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)

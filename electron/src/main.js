@@ -26,10 +26,18 @@ const state = {
 const log = (...a) => console.log('[听潮]', ...a);
 const warn = (...a) => console.warn('[听潮]', ...a);
 
-/* 应用安装根目录：mac 为 .app 的父目录，win 为 exe 所在目录 */
+/* 应用安装根目录：mac 为 .app 的父目录，win 为 exe 所在目录。
+   exe 形如 <root>/听潮.app/Contents/MacOS/听潮，按 .app 边界回溯，
+   不要写死层数——之前少退一层，升级包被装进 听潮.app/听潮.app 里了。 */
 function appInstallRoot() {
-  const exeDir = path.dirname(app.getPath('exe'));
-  return process.platform === 'darwin' ? path.resolve(exeDir, '..', '..') : exeDir;
+  const exe = app.getPath('exe');
+  if (process.platform !== 'darwin') return path.dirname(exe);
+  let dir = path.dirname(exe);                 // .../听潮.app/Contents/MacOS
+  for (let i = 0; i < 6 && dir !== path.dirname(dir); i++) {
+    if (path.basename(dir).toLowerCase().endsWith('.app')) return path.dirname(dir);
+    dir = path.dirname(dir);
+  }
+  return path.resolve(path.dirname(exe), '..', '..', '..');  // 兜底：Contents 上三级
 }
 
 /* ---------------------------------------------------------------- sidecar */
