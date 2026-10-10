@@ -26,6 +26,8 @@ HERE = Path(__file__).parent
 
 app = FastAPI(title="听潮 · 控制台", docs_url=None, redoc_url=None)
 app.mount("/static", StaticFiles(directory=HERE / "static"), name="static")
+# 渠道商后台走独立前缀，保证在任何域名（主站 /p/、partner 子域、/admin/p/）下都能取到样式
+app.mount("/p/static", StaticFiles(directory=HERE / "static"), name="pstatic")
 templates = Jinja2Templates(directory=str(HERE / "templates"))
 
 

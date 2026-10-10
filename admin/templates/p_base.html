@@ -3,26 +3,26 @@
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>{% block title %}渠道中心 · 听潮{% endblock %}</title>
-<link rel="stylesheet" href="/admin/static/tokens.css">
-<link rel="stylesheet" href="/admin/static/tingchao-ui.css">
-<link rel="stylesheet" href="/admin/static/partner.css">
-<link rel="icon" href="/admin/static/logo/favicon.svg">
+<link rel="stylesheet" href="/p/static/tokens.css">
+<link rel="stylesheet" href="/p/static/tingchao-ui.css">
+<link rel="stylesheet" href="/p/static/partner.css">
+<link rel="icon" href="/p/static/logo/favicon.svg">
 </head>
 <body>
 <div class="tc-app"><div class="tc-shell">
   <aside class="tc-sidebar">
     <div class="tc-brand">
-      <span class="tc-logo"><img src="/admin/static/logo/logo-mark.svg" width="36" height="36" alt="听潮"></span>
+      <span class="tc-logo"><img src="/p/static/logo/logo-mark.svg" width="36" height="36" alt="听潮"></span>
       <div class="tc-brand-name">{{ partner_name }}<small>渠道中心</small></div>
     </div>
     <div class="tc-slogan">潮声之下，皆是商机</div>
     <div class="tc-nav-group">业务</div>
-    <a class="tc-nav-item {% if nav=='dash' %}is-active{% endif %}" href="/p/"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-chart"/></svg><span>经营概览</span></a>
-    <a class="tc-nav-item {% if nav=='orders' %}is-active{% endif %}" href="/p/orders"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-refresh"/></svg><span>开单与订单</span></a>
-    <a class="tc-nav-item {% if nav=='customers' %}is-active{% endif %}" href="/p/customers"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-user"/></svg><span>客户与报备</span></a>
+    <a class="tc-nav-item {% if nav=='dash' %}is-active{% endif %}" href="/p/"><svg class="tc-icon"><use href="/p/static/icons/sprite.svg#tc-chart"/></svg><span>经营概览</span></a>
+    <a class="tc-nav-item {% if nav=='orders' %}is-active{% endif %}" href="/p/orders"><svg class="tc-icon"><use href="/p/static/icons/sprite.svg#tc-refresh"/></svg><span>开单与订单</span></a>
+    <a class="tc-nav-item {% if nav=='customers' %}is-active{% endif %}" href="/p/customers"><svg class="tc-icon"><use href="/p/static/icons/sprite.svg#tc-user"/></svg><span>客户与报备</span></a>
     <div class="tc-nav-group">结算</div>
-    <a class="tc-nav-item {% if nav=='bills' %}is-active{% endif %}" href="/p/bills"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-check-square"/></svg><span>返佣账单</span></a>
-    <a class="tc-nav-item {% if nav=='profile' %}is-active{% endif %}" href="/p/profile"><svg class="tc-icon"><use href="/admin/static/icons/sprite.svg#tc-settings"/></svg><span>结算资料</span></a>
+    <a class="tc-nav-item {% if nav=='bills' %}is-active{% endif %}" href="/p/bills"><svg class="tc-icon"><use href="/p/static/icons/sprite.svg#tc-check-square"/></svg><span>返佣账单</span></a>
+    <a class="tc-nav-item {% if nav=='profile' %}is-active{% endif %}" href="/p/profile"><svg class="tc-icon"><use href="/p/static/icons/sprite.svg#tc-settings"/></svg><span>结算资料</span></a>
     <div style="flex:1"></div>
     <div class="tc-quota">
       <div style="font-size:12px;color:var(--tc-ink-2)">推广码 <code>{{ partner_code }}</code></div>
