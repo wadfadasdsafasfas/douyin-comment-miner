@@ -325,6 +325,12 @@ def update_download():
     return {"ok": True, "msg": "开始下载"}
 
 
+@app.get("/api/update/log")
+def update_log():
+    """升级器是 detached 子进程，失败原因只写在 updater.log，这里回传尾部给前端/客服。"""
+    return {"log": updater.read_log_tail(60)}
+
+
 @app.get("/api/update/state")
 def update_state():
     return {k: v for k, v in UPD.items() if k != "info"}
@@ -338,6 +344,10 @@ def update_install(body: UpdateInstallIn):
     app_root = body.app_root or os.environ.get("TC_APP_ROOT", "")
     if not app_root or not Path(app_root).exists():
         raise HTTPException(400, "无法定位应用安装目录，请手动覆盖安装")
+    # 先同步预检（DMG 里直接运行 / 目录不可写），不行就当场报错、别让应用退出了才失败
+    why = updater.preflight(Path(app_root))
+    if why:
+        raise HTTPException(400, why)
     me = sys.executable
     args = [me, "--apply-update", UPD["zip"], app_root]
     if body.host_pid:

@@ -514,7 +514,7 @@ async function renderSettings() {
     <div class="info-row"><span>到期时间</span><b>${esc((m.expires_at || '—').slice(0, 10))} · ${m.days_left == null ? '永久' : m.days_left + ' 天'}</b></div>
     <div class="info-row"><span>本机设备名</span><b>${esc(m.device_name || '—')}</b></div>
     <div class="info-row"><span>授权服务器</span><b>${esc(m.server_url || '—')}</b></div>
-    <div class="info-row"><span>客户端版本</span><b>${esc(displayVersion(m.version))}</b></div>
+    <div class="info-row"><span>客户端版本</span><b>V${esc(m.version || '—')}</b></div>
     <div class="info-row"><span>出品方</span><b>${BRAND_VENDOR}</b></div>
     <div class="info-row"><span>采集平台</span><b>${esc(platName(c.platform || 'douyin'))}</b></div>
     <div class="tc-field" style="margin-top:18px"><label class="tc-label">抓取配置</label>
