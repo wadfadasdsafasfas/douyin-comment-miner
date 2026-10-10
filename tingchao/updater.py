@@ -55,6 +55,28 @@ def read_log_tail(limit: int = 40) -> str:
 
 # ---------------------------------------------------------------- 预检
 
+def cleanup_leftovers(app_root, log=None) -> int:
+    """删掉升级遗留的 听潮.app.old / 听潮.app.broken。
+
+    升级器进程可能被系统随旧 App 一起回收，来不及清理，所以 sidecar
+    启动时也会调用一次，避免旧版本一直占着几百 MB 磁盘。
+    """
+    removed = 0
+    for suffix in (".old", ".broken"):
+        target = Path(app_root) / f"{APP_NAME}.app{suffix}"
+        if not target.exists():
+            continue
+        try:
+            shutil.rmtree(target)
+            removed += 1
+            if log:
+                log(f"清理遗留：{target.name}")
+        except OSError as e:
+            if log:
+                log(f"清理 {target.name} 失败（下次启动再试）：{e}")
+    return removed
+
+
 def preflight(app_root: Path) -> str:
     """替换前的可行性检查，返回中文原因（空串=可行）。"""
     if not app_root or not app_root.exists():
@@ -288,10 +310,10 @@ def apply_update(zip_path: Path, app_root: Path, wait_pid: int | None = None) ->
             # 清掉隔离属性，避免更新后被 Gatekeeper 拦
             subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(final)],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            _wait_no_instance(final, log)
+            # 先拉起新版：万一本进程随后被系统连带回收，用户也已经拿到新版了
             _relaunch(app_root)
-            if backup.exists():
-                shutil.rmtree(backup, ignore_errors=True)
+            time.sleep(2)
+            cleanup_leftovers(app_root, log)
             log("升级完成，已重启新版")
             return 0
 

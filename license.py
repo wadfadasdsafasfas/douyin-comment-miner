@@ -24,7 +24,7 @@ except Exception:
     _CONFIG_SERVER = None
 
 # 客户端版本号 —— 每次发版手工 bump（与 Git tag 一致）
-__version__ = "1.0.4"
+__version__ = "1.0.5"
 
 # 服务端地址 —— 打包前改 server_url.py 中的 SERVER_URL；也可通过环境变量覆盖
 SERVER_URL = (
