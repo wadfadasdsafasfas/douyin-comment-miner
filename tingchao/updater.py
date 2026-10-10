@@ -154,20 +154,22 @@ def _wait_process_exit(pid: int, timeout: float = 20.0) -> bool:
     return False
 
 
-def _wait_no_instance(app_root: Path, log, timeout: float = 12.0) -> None:
-    """mac 专用：等所有从该安装目录启动的实例退干净。
-    旧实例不退，新版会被 Electron 单实例锁挡回去，用户就会看到
-    「升级完再打开还是旧版本、还提示升级」。"""
+def _wait_no_instance(bundle: Path, log, timeout: float = 12.0) -> None:
+    """mac 专用：等该 .app 自身的实例退干净再重启。
+    旧实例不退，新版会被 Electron 单实例锁挡回去，用户就看到
+    「升级完再打开还是旧版本、还提示升级」。
+    注意匹配串必须精确到 .app 内部路径——只写 /Applications 会把机器上
+    所有装在 /Applications 的进程都当成"旧实例"，白等一整轮超时。"""
     if sys.platform != "darwin":
         return
-    target = str(app_root)
+    target = str(bundle / "Contents" / "MacOS")
     end = time.time() + timeout
     while time.time() < end:
         out = subprocess.run(["pgrep", "-f", target], capture_output=True, text=True)
         pids = [p for p in out.stdout.split() if p.strip().isdigit()]
         if not pids:
             return
-        log(f"等待旧实例退出：{pids}")
+        log(f"等待旧实例退出：{pids[:8]}")
         time.sleep(0.5)
     log("旧实例超时未退出，仍尝试重启新版")
 
@@ -286,7 +288,7 @@ def apply_update(zip_path: Path, app_root: Path, wait_pid: int | None = None) ->
             # 清掉隔离属性，避免更新后被 Gatekeeper 拦
             subprocess.run(["xattr", "-dr", "com.apple.quarantine", str(final)],
                            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            _wait_no_instance(app_root, log)
+            _wait_no_instance(final, log)
             _relaunch(app_root)
             if backup.exists():
                 shutil.rmtree(backup, ignore_errors=True)
@@ -313,10 +315,10 @@ def apply_update(zip_path: Path, app_root: Path, wait_pid: int | None = None) ->
                 log(f"跳过 {item.name}：{e}")
         if failed:
             log(f"有 {len(failed)} 项写入失败（示例：{failed[:5]}），多半是权限不足")
-            _wait_no_instance(app_root, log)
+            _wait_no_instance(app_root / f"{APP_NAME}.app", log)
             _relaunch(app_root)
             return 4
-        _wait_no_instance(app_root, log)
+        _wait_no_instance(app_root / f"{APP_NAME}.app", log)
         _relaunch(app_root)
         log("升级完成，已重启新版")
         return 0
